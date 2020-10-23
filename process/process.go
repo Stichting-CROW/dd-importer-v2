@@ -2,19 +2,51 @@ package process
 
 import (
 	"deelfietsdashboard-importer/feed"
+	"log"
+
+	"github.com/go-redis/redis"
+	_ "github.com/lib/pq"
+    "github.com/jmoiron/sqlx"
 )
 
 type ProcessResult struct {
-	currentBikesInFeed map[string]feed.Bike
-	createdEvents []Event
+	CurrentBikesInFeed map[string]feed.Bike
+	createdEvents      []Event
+	feedIsEmpty        bool
 }
 
-func ProcessNewData(strategy string, old map[string]feed.Bike, new []feed.Bike) map[string]feed.Bike {
+// DataProcessor struct for eventchannel and redis.
+type DataProcessor struct {
+	eventChan chan []Event
+	rdb       *redis.Client
+	db        *sqlx.DB
+}
+
+func InitDataProcessor() DataProcessor {
+	db, err := sqlx.Connect("postgres", "dbname=deelfietsdashboard sslmode=disable")
+	if err != nil {
+		log.Fatal(err)
+	}
+	return DataProcessor{
+		rdb: redis.NewClient(&redis.Options{
+			Addr:     "localhost:6379",
+			Password: "", // no password set
+			DB:       0,  // use default DB
+		}),
+		eventChan: make(chan []Event),
+		db:  db,
+	}
+
+}
+
+func (processor DataProcessor) ProcessNewData(strategy string, old map[string]feed.Bike, new []feed.Bike) ProcessResult {
+	result := ProcessResult{}
 	switch strategy {
 	case "clean":
-		return CleanCompare(old, new)
+		result = CleanCompare(old, new)
 	case "gps":
-		return nil
+		result = ProcessResult{}
 	}
-	return nil
+	processor.eventChan <- result.createdEvents
+	return result
 }

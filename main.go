@@ -8,7 +8,11 @@ import (
 	"log"
 	"sync"
 	"time"
+
+	"github.com/go-redis/redis/v8"
 )
+
+var rdb *redis.Client
 
 func main() {
 	felyx := feed.Feed{
@@ -20,13 +24,13 @@ func main() {
 		Type:           "gbfs",
 		ImportStrategy: "clean",
 	}
-	hely := feed.Feed{
-		OperatorID:     "hely",
-		Url:            "https://tomp.hely.com/operator/available-assets",
-		NumberOfPulls:  0,
-		Type:           "tomp",
-		ImportStrategy: "clean",
-	}
+	// hely := feed.Feed{
+	// 	OperatorID:     "hely",
+	// 	Url:            "https://tomp.hely.com/operator/available-assets",
+	// 	NumberOfPulls:  0,
+	// 	Type:           "tomp",
+	// 	ImportStrategy: "clean",
+	// }
 	keobike := feed.Feed{
 		OperatorID:     "keobike",
 		Url:            "https://api.mobilock.nl/gbfs/v2/free-bike-status/keobike",
@@ -36,20 +40,25 @@ func main() {
 	}
 	feeds := []feed.Feed{}
 
-	feeds = append(feeds, hely)
+	// feeds = append(feeds, hely)
 	feeds = append(feeds, felyx)
 	feeds = append(feeds, keobike)
-	importLoop(feeds)
+	dataProcessor := process.InitDataProcessor()
+
+	// Start processing of events in background.
+	go dataProcessor.EventProcessor()
+
+	importLoop(feeds, dataProcessor)
 }
 
-func importLoop(feeds []feed.Feed) {
+func importLoop(feeds []feed.Feed, dataProcessor process.DataProcessor) {
 	var waitGroup sync.WaitGroup
 
 	for {
 		startImport := time.Now()
 		for index, _ := range feeds {
 			waitGroup.Add(1)
-			go importFeed(&feeds[index], &waitGroup)
+			go importFeed(&feeds[index], &waitGroup, dataProcessor)
 		}
 		waitGroup.Wait()
 		importDuration := time.Now().Sub(startImport)
@@ -60,16 +69,16 @@ func importLoop(feeds []feed.Feed) {
 	}
 }
 
-func importFeed(operator_feed *feed.Feed, waitGroup *sync.WaitGroup) {
+func importFeed(operator_feed *feed.Feed, waitGroup *sync.WaitGroup, dataProcessor process.DataProcessor) {
 	defer waitGroup.Done()
 	var newBikes []feed.Bike
 	switch operator_feed.Type {
 	case "gbfs":
 		newBikes = gbfs.ImportFeed(operator_feed)
 	case "tomp":
-		tomp.ImportFeed(operator_feed)
+		newBikes = tomp.ImportFeed(operator_feed)
 	}
-	operator_feed.LastImport = process.ProcessNewData(operator_feed.ImportStrategy, operator_feed.LastImport, newBikes)
+	operator_feed.LastImport = dataProcessor.ProcessNewData(operator_feed.ImportStrategy, operator_feed.LastImport, newBikes).CurrentBikesInFeed
 }
 
 // load feeds from database.

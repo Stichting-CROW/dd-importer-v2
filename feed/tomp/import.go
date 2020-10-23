@@ -50,12 +50,12 @@ type Asset struct {
 	Image string `json:"image,omitempty"`
 }
 
-func ImportFeed(feed *feed.Feed) {
+func ImportFeed(feed *feed.Feed) []feed.Bike {
 	feed.NumberOfPulls = feed.NumberOfPulls + 1
-	getData(feed)
+	return getData(feed)
 }
 
-func getData(feed *feed.Feed) {
+func getData(feed *feed.Feed) []feed.Bike {
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 	}
@@ -63,21 +63,45 @@ func getData(feed *feed.Feed) {
 	req, err := http.NewRequest("GET", feed.Url, nil)
 	if err != nil {
 		log.Print(err)
-		return
+		return nil
 	}
 
 	res, err := client.Do(req)
 	if err != nil {
 		log.Print(err)
-		return
+		return nil
 	}
 	if res.StatusCode != http.StatusOK {
 		log.Printf("[%s] Loading data from %s not possible. Status code: %d", feed.OperatorID, feed.Url, res.StatusCode)
-		return
+		return nil
 	}
 
 	decoder := json.NewDecoder(res.Body)
 	var bikeFeed AvailableAssets
 	decoder.Decode(&bikeFeed)
+	return convertTompToFreeBike(bikeFeed)
+}
 
+func convertTompToFreeBike(tompFeed AvailableAssets) []feed.Bike {
+	bikes := []feed.Bike{}
+	for _, availableAssets := range tompFeed {
+		newBikes := converTompAssetsToBikes(availableAssets.Assets)
+		bikes = append(bikes, newBikes...)
+	}
+	return bikes
+}
+
+func converTompAssetsToBikes(assetsTomp []Asset) []feed.Bike {
+	bikes := []feed.Bike{}
+	for _, tompBike := range assetsTomp {
+		bike := feed.Bike{
+			BikeID:     tompBike.AssetID,
+			Lat:        tompBike.Place.Coordinates.Lat,
+			Lon:        tompBike.Place.Coordinates.Lng,
+			IsReserved: false,
+			IsDisabled: false,
+		}
+		bikes = append(bikes, bike)
+	}
+	return bikes
 }
