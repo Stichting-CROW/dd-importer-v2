@@ -62,7 +62,7 @@ func importLoop(feeds []feed.Feed, dataProcessor process.DataProcessor) {
 		}
 		waitGroup.Wait()
 		importDuration := time.Now().Sub(startImport)
-		log.Printf("Import took %v", importDuration)
+		log.Printf("All imports took %v", importDuration)
 		if importDuration.Seconds() <= 30 {
 			time.Sleep(time.Second*30 - importDuration)
 		}

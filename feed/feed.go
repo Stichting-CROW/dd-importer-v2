@@ -17,4 +17,5 @@ type Bike struct {
 	Lon        float64 `json:"lon"`
 	IsReserved bool    `json:"is_reserved"`
 	IsDisabled bool    `json:"is_disabled"`
+	SystemID   string  `json:"system_id"`
 }

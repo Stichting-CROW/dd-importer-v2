@@ -56,6 +56,7 @@ func (processor DataProcessor) ProcessEvent(event Event) {
 	}
 }
 
+// CheckIn
 func (processor DataProcessor) CheckIn(event Event) {
 	bEvent, err := msgpack.Marshal(&event)
 	if err != nil {

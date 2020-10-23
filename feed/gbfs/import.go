@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// FreeBikeStatus is the struct that represents the FreeBikeStatus gbfs structure.
 type FreeBikeStatus struct {
 	LastUpdated int `json:"last_updated"`
 	TTL         int `json:"ttl"`
@@ -16,6 +17,7 @@ type FreeBikeStatus struct {
 	} `json:"data"`
 }
 
+// ImportFeed is a function is called to import data from a feed.
 func ImportFeed(feed *feed.Feed) []feed.Bike {
 	return getData(feed)
 }
@@ -48,5 +50,11 @@ func getData(feed *feed.Feed) []feed.Bike {
 	decoder := json.NewDecoder(res.Body)
 	var bikeFeed FreeBikeStatus
 	decoder.Decode(&bikeFeed)
-	return bikeFeed.Data.Bikes
+
+	// Set SystemID
+	bikes := bikeFeed.Data.Bikes
+	for i := range bikes {
+		bikes[i].SystemID = feed.OperatorID
+	}
+	return bikes
 }
