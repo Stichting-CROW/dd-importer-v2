@@ -9,6 +9,7 @@ import (
 )
 
 type Event struct {
+	OperatorID		   string
 	Bike               feed.Bike
 	EventType          string
 	Timestamp          time.Time
@@ -69,22 +70,7 @@ func (processor DataProcessor) CheckIn(event Event) {
 }
 
 
-func (processor DataProcessor) StartParkEvent(checkIn Event) {
-	stmt := `INSERT INTO park_events
-		(system_id, bike_id, location, start_time)
-		VALUES ($1, $2, ST_SetSRID(ST_Point($3, $4), 4326), $5)
-	`
-	processor.db.MustExec(stmt, "test", checkIn.Bike.BikeID, checkIn.Bike.Lon, checkIn.Bike.Lat, checkIn.Timestamp)
-}
 
-func (processor DataProcessor) EndParkEvent(checkOut Event) {
-	stmt := `INSERT INTO park_events
-		(system_id, bike_id, location, start_time)
-		VALUES ($1, $2, ST_SetSRID(ST_Point($3, $4), 4326), $5)
-	`
-	processor.db.MustExec(stmt)
-
-}
 
 func (processor DataProcessor) CheckOut(event Event) {
 

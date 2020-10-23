@@ -11,13 +11,13 @@ import (
 
 type ProcessResult struct {
 	CurrentBikesInFeed map[string]feed.Bike
-	createdEvents      []Event
-	feedIsEmpty        bool
+	CreatedEvents      []Event
+	FeedIsEmpty        bool
 }
 
 // DataProcessor struct for eventchannel and redis.
 type DataProcessor struct {
-	eventChan chan []Event
+	eventChan chan []ProcessResult
 	rdb       *redis.Client
 	db        *sqlx.DB
 }
@@ -45,8 +45,8 @@ func (processor DataProcessor) ProcessNewData(strategy string, old map[string]fe
 	case "clean":
 		result = CleanCompare(old, new)
 	case "gps":
-		result = ProcessResult{}
+		result = CleanCompare(old, new)
 	}
-	processor.eventChan <- result.createdEvents
+	processor.eventChan <- result
 	return result
 }

@@ -9,14 +9,16 @@ Als alle fiets opeens uit een feed verdwijnen wordt er vanuitgegaan dat er een s
 clean:
 Data zoals van Keobike, Hely en Donkey. De locatie kan alleen worden geupdate door operator of gebruikers via Mobiele app.
 
+gps:
+Data die op GPS gebaseerd (voertuigen hebben GPS) zoals we die van Check, Felyx en Gosharing krijgen.
+
 Als een fiets verschijnt (dat die niet in de gbfs feed zit en dan wel in de gbfs feed) in de feed wordt het beschouwd als een check_in. 
 Als een fiets verdwijnt (dat de fiets in de gbfs feed zit en dan niet meer in de gbfs feed zit) uit de feed wordt het beschouwd als een check_out.
 Als een fiets binnen vijftien (?) minuten weer ongeveer op dezelfde plaats (100m) terugkeert wordt er vanuit gegaan dat de fiets niet gebruikt is geweest (waarschijnlijk reserving of iets dergelijks).  
 Als een fiets in de GBFS blijft, maar de afstand is groter dan 500m een nieuw park_event maar geen rit.
-kleiner dan 500 GPS locatie actualiseren. 
+kleiner dan 500m GPS locatie actualiseren. 
 
-gps:
-Data die op GPS gebaseerd (voertuigen hebben GPS) zoals we die van Check, Felyx en Gosharing krijgen.
+
 
 Als een fiets verschijnt in de feed wordt het beschouwd als een check_in. 
 Als een fiets verdwijnt uit de feed wordt het beschouwd als een check_out.
