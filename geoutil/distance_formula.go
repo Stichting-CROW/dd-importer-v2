@@ -1,4 +1,4 @@
-package util
+package geoutil
 
 import (
 	"math"

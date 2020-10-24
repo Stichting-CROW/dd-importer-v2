@@ -5,11 +5,12 @@ import (
 	"log"
 
 	"github.com/go-redis/redis"
-	_ "github.com/lib/pq"
-    "github.com/jmoiron/sqlx"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq" // postgres
 )
 
-type ProcessResult struct {
+// Result is a container for new data.
+type Result struct {
 	CurrentBikesInFeed map[string]feed.Bike
 	CreatedEvents      []Event
 	FeedIsEmpty        bool
@@ -17,11 +18,12 @@ type ProcessResult struct {
 
 // DataProcessor struct for eventchannel and redis.
 type DataProcessor struct {
-	eventChan chan []ProcessResult
+	eventChan chan []Event
 	rdb       *redis.Client
 	db        *sqlx.DB
 }
 
+// InitDataProcessor sets up all dataprocessing.
 func InitDataProcessor() DataProcessor {
 	db, err := sqlx.Connect("postgres", "dbname=deelfietsdashboard sslmode=disable")
 	if err != nil {
@@ -34,19 +36,20 @@ func InitDataProcessor() DataProcessor {
 			DB:       0,  // use default DB
 		}),
 		eventChan: make(chan []Event),
-		db:  db,
+		db:        db,
 	}
 
 }
 
-func (processor DataProcessor) ProcessNewData(strategy string, old map[string]feed.Bike, new []feed.Bike) ProcessResult {
-	result := ProcessResult{}
+// ProcessNewData call this function with new data from a datafeed.
+func (processor DataProcessor) ProcessNewData(strategy string, old map[string]feed.Bike, new []feed.Bike) Result {
+	result := Result{}
 	switch strategy {
 	case "clean":
 		result = CleanCompare(old, new)
 	case "gps":
 		result = CleanCompare(old, new)
 	}
-	processor.eventChan <- result
+	processor.eventChan <- result.CreatedEvents
 	return result
 }

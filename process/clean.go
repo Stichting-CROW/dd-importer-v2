@@ -7,14 +7,14 @@ import (
 )
 
 // CleanCompare compares available bike data between consucetive datasets.
-func CleanCompare(old map[string]feed.Bike, new []feed.Bike) ProcessResult {
-	processResult := ProcessResult{
+func CleanCompare(old map[string]feed.Bike, new []feed.Bike) Result {
+	processResult := Result{
 		CurrentBikesInFeed: map[string]feed.Bike{},
-		createdEvents:      []Event{},
+		CreatedEvents:      []Event{},
 	}
 	if len(new) == 0 {
 		log.Print("Suddenly all bikes are gone, possibly something is wrong with the feed, so the new data is ignored.")
-		processResult.feedIsEmpty = true
+		processResult.FeedIsEmpty = true
 		processResult.CurrentBikesInFeed = old
 		return processResult
 	}
@@ -28,7 +28,7 @@ func CleanCompare(old map[string]feed.Bike, new []feed.Bike) ProcessResult {
 				EventType: "check_in",
 				Timestamp: time.Now(),
 			}
-			processResult.createdEvents = append(processResult.createdEvents, newEvent)
+			processResult.CreatedEvents = append(processResult.CreatedEvents, newEvent)
 		}
 		processResult.CurrentBikesInFeed[bike.BikeID] = bike
 		delete(old, bike.BikeID)
@@ -40,7 +40,7 @@ func CleanCompare(old map[string]feed.Bike, new []feed.Bike) ProcessResult {
 			EventType: "check_out",
 			Timestamp: time.Now(),
 		}
-		processResult.createdEvents = append(processResult.createdEvents, newEvent)
+		processResult.CreatedEvents = append(processResult.CreatedEvents, newEvent)
 	}
 	return processResult
 }
