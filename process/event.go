@@ -22,7 +22,7 @@ type Event struct {
 }
 
 func (event Event) getKey() string {
-	return event.OperatorID + ":" + event.Bike.BikeID
+	return event.Bike.BikeID + ":" + event.Bike.BikeID
 }
 
 var ctx = context.Background()

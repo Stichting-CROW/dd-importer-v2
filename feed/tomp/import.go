@@ -82,19 +82,19 @@ func getData(feed *feed.Feed) []feed.Bike {
 	decoder := json.NewDecoder(res.Body)
 	var bikeFeed AvailableAssets
 	decoder.Decode(&bikeFeed)
-	return convertTompToFreeBike(bikeFeed)
+	return convertTompToFreeBike(bikeFeed, feed.OperatorID)
 }
 
-func convertTompToFreeBike(tompFeed AvailableAssets) []feed.Bike {
+func convertTompToFreeBike(tompFeed AvailableAssets, systemID string) []feed.Bike {
 	bikes := []feed.Bike{}
 	for _, availableAssets := range tompFeed {
-		newBikes := converTompAssetsToBikes(availableAssets.Assets)
+		newBikes := converTompAssetsToBikes(availableAssets.Assets, systemID)
 		bikes = append(bikes, newBikes...)
 	}
 	return bikes
 }
 
-func converTompAssetsToBikes(assetsTomp []Asset) []feed.Bike {
+func converTompAssetsToBikes(assetsTomp []Asset, systemID string) []feed.Bike {
 	bikes := []feed.Bike{}
 	for _, tompBike := range assetsTomp {
 		bike := feed.Bike{
@@ -103,6 +103,7 @@ func converTompAssetsToBikes(assetsTomp []Asset) []feed.Bike {
 			Lon:        tompBike.Place.Coordinates.Lng,
 			IsReserved: false,
 			IsDisabled: false,
+			SystemID:   systemID,
 		}
 		bikes = append(bikes, bike)
 	}
