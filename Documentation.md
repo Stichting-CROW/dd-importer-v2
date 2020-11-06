@@ -12,6 +12,8 @@ Data zoals van Keobike, Hely en Donkey. De locatie kan alleen worden geupdate do
 gps:
 Data die op GPS gebaseerd (voertuigen hebben GPS) zoals we die van Check, Felyx en Gosharing krijgen.
 
+Voor nu worden voor beide strategiën het zelfde algoritme gehanteert. s
+
 Als een fiets verschijnt (dat die niet in de gbfs feed zit en dan wel in de gbfs feed) in de feed wordt het beschouwd als een check_in. 
 Als een fiets verdwijnt (dat de fiets in de gbfs feed zit en dan niet meer in de gbfs feed zit) uit de feed wordt het beschouwd als een check_out.
 Als een fiets binnen vijftien (?) minuten weer ongeveer op dezelfde plaats (100m) terugkeert wordt er vanuit gegaan dat de fiets niet gebruikt is geweest (waarschijnlijk reserving of iets dergelijks).  
@@ -20,11 +22,6 @@ kleiner dan 500m GPS locatie actualiseren.
 
 
 
-Als een fiets verschijnt in de feed wordt het beschouwd als een check_in. 
-Als een fiets verdwijnt uit de feed wordt het beschouwd als een check_out.
-Als een fiets binnen vijftien (?) minuten weer ongeveer (100m) op dezelfde plaats terugkeert wordt er vanuit gegaan dat de fiets niet gebruikt is geweest (waarschijnlijk reserving of iets dergelijks).  
-Als een fiets in de GBFS blijft, maar de afstand is groter dan 500m een nieuw park_event maar geen rit.
-kleiner dan 500 GPS locatie actualiseren. 
 
 flickbike:
 Strategie waar fiets eerst terug komt in de feed en daarna de locatie pas geupdate wordt.

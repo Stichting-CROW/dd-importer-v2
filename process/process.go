@@ -2,7 +2,9 @@ package process
 
 import (
 	"deelfietsdashboard-importer/feed"
+	"fmt"
 	"log"
+	"os"
 
 	"github.com/go-redis/redis"
 	"github.com/jmoiron/sqlx"
@@ -20,23 +22,37 @@ type Result struct {
 type DataProcessor struct {
 	eventChan chan []Event
 	rdb       *redis.Client
-	db        *sqlx.DB
+	DB        *sqlx.DB
 }
 
 // InitDataProcessor sets up all dataprocessing.
 func InitDataProcessor() DataProcessor {
-	db, err := sqlx.Connect("postgres", "dbname=deelfietsdashboard sslmode=disable")
+	connStr := ""
+	if os.Getenv("DEV") == "true" {
+		connStr = "dbname=deelfietsdashboard sslmode=disable"
+	} else {
+		connStr = fmt.Sprintf("dbname=%s user=%s host=%s password=%s sslmode=disable",
+			os.Getenv("DB_NAME"), os.Getenv("DB_USER"), os.Getenv("DB_HOST"), os.Getenv("DB_PASSWORD"))
+	}
+
+	db, err := sqlx.Connect("postgres", connStr)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	redisAddress := "localhost:6379"
+	if os.Getenv("DEV") != "true" {
+		redisAddress = os.Getenv("REDIS_HOST")
+	}
+
 	return DataProcessor{
 		rdb: redis.NewClient(&redis.Options{
-			Addr:     "localhost:6379",
+			Addr:     redisAddress,
 			Password: "", // no password set
 			DB:       0,  // use default DB
 		}),
 		eventChan: make(chan []Event),
-		db:        db,
+		DB:        db,
 	}
 
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"deelfietsdashboard-importer/feed"
 	"deelfietsdashboard-importer/geoutil"
+	"fmt"
 	"log"
 	"time"
 
@@ -17,6 +18,11 @@ type Event struct {
 	Timestamp          time.Time
 	RelatedTripID      int64
 	RelatedParkEventID int64
+	Remark             string
+}
+
+func (event Event) getKey() string {
+	return event.OperatorID + ":" + event.Bike.BikeID
 }
 
 var ctx = context.Background()
@@ -40,8 +46,17 @@ func (processor DataProcessor) ProcessEvent(event Event) {
 	case "vehicle_moved":
 		event = processor.vehicleMoved(event)
 	}
+	if event.EventType == "" {
+		return
+	}
+
 	bEvent, err := msgpack.Marshal(&event)
-	_, err = processor.rdb.LPush(event.Bike.BikeID, bEvent).Result()
+	_, err = processor.rdb.LPush(event.getKey(), bEvent).Result()
+	if err != nil {
+		log.Print(err)
+	}
+	// clean data, this must be improved for temporary keys
+	_, err = processor.rdb.LTrim(event.getKey(), 0, 99).Result()
 	if err != nil {
 		log.Print(err)
 	}
@@ -49,7 +64,7 @@ func (processor DataProcessor) ProcessEvent(event Event) {
 
 // CheckIn
 func (processor DataProcessor) checkIn(event Event) Event {
-	previousEvents := processor.getLastEvents(event.Bike.BikeID)
+	previousEvents := processor.getLastEvents(event.getKey())
 
 	if len(previousEvents) == 0 {
 		event = processor.StartParkEvent(event)
@@ -64,12 +79,14 @@ func (processor DataProcessor) checkIfTripIsMade(event Event, previousEvents []E
 	lastEvent := previousEvents[0]
 	if lastEvent.EventType != "check_out" {
 		log.Printf("Last Event was not a check_out that is strange behaviour.... see details %v, there is no trip made.", event)
-		return event
+		log.Printf("For now handle thas as a movement, only as the vehicle is moved this event is registered.")
+		event.EventType = "check_in_after_reboot"
+		event.Remark = "new check_in after reboot"
+		return processor.vehicleMoved(event)
 	}
 	if checkIfTripShouldBeResetted(event, lastEvent) == true {
-		log.Print("This trip should be resetted. (still has to be implemented)")
-		log.Print(event)
-		log.Print(lastEvent)
+		log.Print("This trip should be resetted. ", event.Bike.BikeID)
+		return processor.resetTrip(event, previousEvents)
 	}
 
 	event.RelatedTripID = lastEvent.RelatedTripID
@@ -88,26 +105,50 @@ func checkIfTripShouldBeResetted(checkIn Event, previousCheckOut Event) bool {
 }
 
 func (processor DataProcessor) checkOut(event Event) Event {
-	previousEvents := processor.getLastEvents(event.Bike.BikeID)
+	previousEvents := processor.getLastEvents(event.getKey())
 	if len(previousEvents) == 0 {
 		log.Print("There is something seriously wrong, a checkOut is always preceded at least one checkIn, possibly there is some data damaged", event)
 		return event
 	}
 
 	event.RelatedParkEventID = previousEvents[0].RelatedParkEventID
-	event = processor.EndParkEvent(event)
+	processor.EndParkEvent(event)
 	event = processor.StartTrip(event)
 
 	return event
 }
 
 func (processor DataProcessor) vehicleMoved(event Event) Event {
+	previousEvents := processor.getLastEvents(event.getKey())
+	if len(previousEvents) == 0 {
+		log.Print("There is something seriously wrong, a moved is always preceded by another event.", event)
+		return event
+	}
+	previousEvent := previousEvents[0]
+
+	distanceMoved := geoutil.Distance(event.Bike.Lat, event.Bike.Lon, previousEvent.Bike.Lat, previousEvent.Bike.Lon)
+	log.Print("Distance moved: ", distanceMoved)
+	if distanceMoved > 500 {
+		log.Print("End old park_event")
+		previousEvent.Timestamp = event.Timestamp
+		processor.EndParkEvent(previousEvent)
+		log.Print("Create new park_event.")
+		event = processor.StartParkEvent(event)
+	} else if distanceMoved < 500 && distanceMoved > 0.1 {
+		log.Print("Update existing park_event.")
+		event = processor.UpdateLocationParkEvent(event, previousEvent)
+	} else {
+		log.Print("Do nothing, distance < 0.1m")
+		return Event{}
+	}
+	event.Remark = fmt.Sprintf("Movement: %.2f", distanceMoved)
+
 	return event
 }
 
 // This function gets the last registered events from the database.
 func (processor DataProcessor) getLastEvents(bikeID string) []Event {
-	results, err := processor.rdb.LRange(bikeID, 0, -1).Result()
+	results, err := processor.rdb.LRange(bikeID, 0, 4).Result()
 	if err != nil {
 		log.Printf("Error in receiving latest events of bike_id %v", err)
 	}
@@ -119,4 +160,14 @@ func (processor DataProcessor) getLastEvents(bikeID string) []Event {
 	}
 	return events
 
+}
+
+func (processor DataProcessor) resetTrip(event Event, previousEvents []Event) Event {
+	previousEvent := previousEvents[0]
+
+	processor.ResetEndParkEvent(previousEvent)
+	processor.CancelTrip(previousEvent)
+	event.EventType = "cancel"
+	event.RelatedParkEventID = previousEvent.RelatedParkEventID
+	return event
 }

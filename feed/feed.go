@@ -1,14 +1,18 @@
 package feed
 
+import "time"
+
 type Feed struct {
-	OperatorID     string
-	Url            string
-	ApiKeyName     string
-	ApiKey         string
-	NumberOfPulls  int
-	Type           string
-	LastImport     map[string]Bike
-	ImportStrategy string
+	ID              int
+	OperatorID      string
+	Url             string
+	ApiKeyName      string
+	ApiKey          string
+	NumberOfPulls   int
+	Type            string
+	LastImport      map[string]Bike
+	ImportStrategy  string
+	LastTimeUpdated time.Time
 }
 
 type Bike struct {

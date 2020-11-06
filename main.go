@@ -5,44 +5,14 @@ import (
 	"deelfietsdashboard-importer/feed/gbfs"
 	"deelfietsdashboard-importer/feed/tomp"
 	"deelfietsdashboard-importer/process"
+	"encoding/json"
 	"log"
 	"sync"
 	"time"
-
-	"github.com/go-redis/redis/v8"
 )
 
-var rdb *redis.Client
-
 func main() {
-	felyx := feed.Feed{
-		OperatorID:     "felyx",
-		Url:            "https://data.felyx.com/gbfs/free_bike_status.json",
-		ApiKeyName:     "x-api-key",
-		ApiKey:         "dfisVeyzZfhc289Dxn9Ap7AeZwTFt3fjGpf28C9st9VoBiS6vAwvtdp8GHZQezn3b5cHKJ2hW39z7eCHsh7pf5atXfaQLfegpV7fWC9pvW42C5jLTJa3CiNdBrGmBeYy",
-		NumberOfPulls:  0,
-		Type:           "gbfs",
-		ImportStrategy: "clean",
-	}
-	// hely := feed.Feed{
-	// 	OperatorID:     "hely",
-	// 	Url:            "https://tomp.hely.com/operator/available-assets",
-	// 	NumberOfPulls:  0,
-	// 	Type:           "tomp",
-	// 	ImportStrategy: "clean",
-	// }
-	keobike := feed.Feed{
-		OperatorID:     "keobike",
-		Url:            "https://api.mobilock.nl/gbfs/v2/free-bike-status/keobike",
-		NumberOfPulls:  0,
-		Type:           "gbfs",
-		ImportStrategy: "clean",
-	}
 	feeds := []feed.Feed{}
-
-	// feeds = append(feeds, hely)
-	feeds = append(feeds, felyx)
-	feeds = append(feeds, keobike)
 	dataProcessor := process.InitDataProcessor()
 
 	// Start processing of events in background.
@@ -54,7 +24,13 @@ func main() {
 func importLoop(feeds []feed.Feed, dataProcessor process.DataProcessor) {
 	var waitGroup sync.WaitGroup
 
+	lastTimeUpdateFeedConfig := time.Time{}
 	for {
+		if time.Now().Sub(lastTimeUpdateFeedConfig) >= time.Minute*1 {
+			lastTimeUpdateFeedConfig = time.Now()
+			feeds = loadFeeds(feeds, dataProcessor)
+		}
+
 		startImport := time.Now()
 		for index, _ := range feeds {
 			waitGroup.Add(1)
@@ -82,6 +58,54 @@ func importFeed(operator_feed *feed.Feed, waitGroup *sync.WaitGroup, dataProcess
 }
 
 // load feeds from database.
-func loadFeeds() {
+func loadFeeds(oldFeeds []feed.Feed, dataProcessor process.DataProcessor) []feed.Feed {
+	log.Print("Sync new feeds")
+	newFeeds := queryNewFeeds(dataProcessor)
+	for index, newFeed := range newFeeds {
+		oldFeed := lookUpFeedID(oldFeeds, newFeed.ID)
+		newFeeds[index].LastImport = oldFeed.LastImport
+		newFeeds[index].NumberOfPulls = oldFeed.NumberOfPulls
+	}
+	return newFeeds
 
+}
+
+func lookUpFeedID(oldData []feed.Feed, ID int) feed.Feed {
+	for _, feed := range oldData {
+		if feed.ID == ID {
+			return feed
+		}
+	}
+	return feed.Feed{}
+
+}
+
+func queryNewFeeds(dataProcessor process.DataProcessor) []feed.Feed {
+	stmt := `SELECT feed_id, system_id, feed_url, 
+		feed_type, import_strategy, authentication, last_time_updated
+		FROM feeds
+		ORDER BY feed_id
+	`
+	rows, err := dataProcessor.DB.Queryx(stmt)
+	if err != nil {
+		log.Print(err)
+	}
+
+	feeds := []feed.Feed{}
+	for rows.Next() {
+		newFeed := feed.Feed{}
+		authentication := []byte{}
+		rows.Scan(&newFeed.ID, &newFeed.OperatorID, &newFeed.Url, &newFeed.Type, &newFeed.ImportStrategy, &authentication, &newFeed.LastTimeUpdated)
+		newFeed = parseAuthentication(newFeed, authentication)
+		feeds = append(feeds, newFeed)
+	}
+	return feeds
+}
+
+func parseAuthentication(newFeed feed.Feed, data []byte) feed.Feed {
+	var result map[string]string
+	json.Unmarshal([]byte(data), &result)
+	newFeed.ApiKeyName = result["ApiKeyName"]
+	newFeed.ApiKey = result["ApiKey"]
+	return newFeed
 }

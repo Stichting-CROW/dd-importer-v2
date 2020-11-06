@@ -65,6 +65,9 @@ func getData(feed *feed.Feed) []feed.Bike {
 		log.Print(err)
 		return nil
 	}
+	if feed.ApiKeyName != "" {
+		req.Header.Add(feed.ApiKeyName, feed.ApiKey)
+	}
 
 	res, err := client.Do(req)
 	if err != nil {
