@@ -3,9 +3,6 @@ package tomp
 import (
 	"deelfietsdashboard-importer/feed"
 	"encoding/json"
-	"log"
-	"net/http"
-	"time"
 )
 
 type AvailableAssets []struct {
@@ -56,26 +53,8 @@ func ImportFeed(feed *feed.Feed) []feed.Bike {
 }
 
 func getData(feed *feed.Feed) []feed.Bike {
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
-	req, err := http.NewRequest("GET", feed.Url, nil)
-	if err != nil {
-		log.Print(err)
-		return nil
-	}
-	if feed.ApiKeyName != "" {
-		req.Header.Add(feed.ApiKeyName, feed.ApiKey)
-	}
-
-	res, err := client.Do(req)
-	if err != nil {
-		log.Print(err)
-		return nil
-	}
-	if res.StatusCode != http.StatusOK {
-		log.Printf("[%s] Loading data from %s not possible. Status code: %d", feed.OperatorID, feed.Url, res.StatusCode)
+	res := feed.DownloadData()
+	if res == nil {
 		return nil
 	}
 

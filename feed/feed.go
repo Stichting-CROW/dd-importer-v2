@@ -1,18 +1,23 @@
 package feed
 
-import "time"
+import (
+	"deelfietsdashboard-importer/feed/auth"
+	"time"
+)
 
 type Feed struct {
-	ID              int
-	OperatorID      string
-	Url             string
-	ApiKeyName      string
-	ApiKey          string
-	NumberOfPulls   int
-	Type            string
-	LastImport      map[string]Bike
-	ImportStrategy  string
-	LastTimeUpdated time.Time
+	ID                 int
+	OperatorID         string
+	Url                string
+	ApiKeyName         string
+	ApiKey             string
+	NumberOfPulls      int
+	Type               string
+	LastImport         map[string]Bike
+	ImportStrategy     string
+	OAuth2Credentials  auth.OauthCredentials
+	AuthenticationType string
+	LastTimeUpdated    time.Time
 }
 
 type Bike struct {

@@ -7,7 +7,7 @@ func (processor DataProcessor) StartTrip(checkOut Event) Event {
 		VALUES ($1, $2, ST_SetSRID(ST_Point($3, $4), 4326), $5)
 		RETURNING trip_id
 	`
-	row := processor.DB.QueryRowx(stmt, checkOut.Bike.SystemID, checkOut.Bike.BikeID,
+	row := processor.DB.QueryRowx(stmt, checkOut.Bike.SystemID, checkOut.getKey(),
 		checkOut.Bike.Lon, checkOut.Bike.Lat, checkOut.Timestamp)
 	row.Scan(&checkOut.RelatedTripID)
 	return checkOut

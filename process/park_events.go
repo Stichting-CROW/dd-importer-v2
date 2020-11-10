@@ -7,7 +7,7 @@ func (processor DataProcessor) StartParkEvent(checkIn Event) Event {
 		VALUES ($1, $2, ST_SetSRID(ST_Point($3, $4), 4326), $5)
 		RETURNING park_event_id
 	`
-	row := processor.DB.QueryRowx(stmt, checkIn.Bike.SystemID, checkIn.Bike.BikeID, checkIn.Bike.Lon, checkIn.Bike.Lat, checkIn.Timestamp)
+	row := processor.DB.QueryRowx(stmt, checkIn.Bike.SystemID, checkIn.getKey(), checkIn.Bike.Lon, checkIn.Bike.Lat, checkIn.Timestamp)
 	row.Scan(&checkIn.RelatedParkEventID)
 	return checkIn
 }

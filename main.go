@@ -103,9 +103,17 @@ func queryNewFeeds(dataProcessor process.DataProcessor) []feed.Feed {
 }
 
 func parseAuthentication(newFeed feed.Feed, data []byte) feed.Feed {
-	var result map[string]string
+	var result map[string]interface{}
 	json.Unmarshal([]byte(data), &result)
-	newFeed.ApiKeyName = result["ApiKeyName"]
-	newFeed.ApiKey = result["ApiKey"]
+	newFeed.AuthenticationType = result["authentication_type"].(string)
+	switch newFeed.AuthenticationType {
+	case "token":
+		newFeed.ApiKeyName = result["ApiKeyName"].(string)
+		newFeed.ApiKey = result["ApiKey"].(string)
+	case "oauth2":
+		newFeed.OAuth2Credentials.OauthTokenBody = result["OAuth2Credentials"]
+		newFeed.OAuth2Credentials.TokenURL = result["TokenURL"].(string)
+	}
+
 	return newFeed
 }
