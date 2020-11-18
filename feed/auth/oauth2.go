@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -13,7 +14,7 @@ type OauthCredentials struct {
 	ExpireTime     time.Time
 	TokenURL       string
 	AccessToken    string
-	OauthTokenBody interface{}
+	OauthTokenBody map[string]interface{}
 }
 
 func (o *OauthCredentials) GetAccessToken() string {
@@ -31,12 +32,16 @@ type OAuthResult struct {
 }
 
 func (o *OauthCredentials) refreshToken() {
-	jsonValue, err := json.Marshal(o.OauthTokenBody)
-	if err != nil {
-		log.Print(err)
-	}
-	req, err := http.NewRequest("POST", o.TokenURL, bytes.NewBuffer(jsonValue))
-	req.Header.Set("Content-Type", "application/json")
+	log.Print("Refresh token")
+	params := url.Values{}
+	params.Set("client_id", o.OauthTokenBody["client_id"].(string))
+	params.Set("client_secret", o.OauthTokenBody["client_secret"].(string))
+	params.Set("grant_type", o.OauthTokenBody["grant_type"].(string))
+	params.Set("scope", o.OauthTokenBody["scope"].(string))
+	request_params := bytes.NewBufferString(params.Encode())
+
+	req, err := http.NewRequest("POST", o.TokenURL, request_params)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -44,9 +49,10 @@ func (o *OauthCredentials) refreshToken() {
 		log.Print(err)
 	}
 	defer resp.Body.Close()
+
 	body, _ := ioutil.ReadAll(resp.Body)
 	var result OAuthResult
 	json.Unmarshal(body, &result)
 	o.AccessToken = result.AccessToken
-	o.ExpireTime = time.Now().Add(time.Second * time.Duration(result.ExpiresIn))
+	o.ExpireTime = time.Now().Add(time.Second*time.Duration(result.ExpiresIn) - time.Second*5)
 }

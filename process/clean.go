@@ -33,7 +33,7 @@ func CleanCompare(old map[string]feed.Bike, new []feed.Bike) Result {
 		} else if geoutil.Distance(oldBike.Lat, oldBike.Lon,
 			bike.Lat, bike.Lon) > 0.1 {
 			// This event is created when a bicycle is moved more then 0.1m
-			log.Print("Vehicle_moved %s", bike.BikeID)
+			log.Printf("Vehicle_moved %s", bike.BikeID)
 			newEvent := Event{
 				Bike:      bike,
 				EventType: "vehicle_moved",

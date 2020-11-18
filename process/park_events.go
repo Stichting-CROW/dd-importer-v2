@@ -1,5 +1,10 @@
 package process
 
+import (
+	"log"
+	"time"
+)
+
 // StartParkEvent started a new park_event in the database when a bike is parked.
 func (processor DataProcessor) StartParkEvent(checkIn Event) Event {
 	stmt := `INSERT INTO park_events
@@ -39,4 +44,26 @@ func (processor DataProcessor) ResetEndParkEvent(event Event) {
 		WHERE park_event_id = $1
 	`
 	processor.DB.MustExec(stmt, event.RelatedParkEventID)
+}
+
+// GetLastParkEvent couples the last known park event in the database to redis.
+func (processor DataProcessor) GetLastParkEvent(event Event) Event {
+	stmt := `SELECT park_event_id, (end_time is null) as is_parked, start_time
+	FROM park_events
+	WHERE park_event_id = (
+		SELECT max(park_event_id) as park_event_id
+		FROM park_events 
+		WHERE bike_id = $1
+	);`
+	row := processor.DB.QueryRowx(stmt, event.getKey())
+	var parkEventID int64
+	var startTime time.Time
+	var isParked bool
+	row.Scan(&parkEventID, &isParked, startTime)
+	if isParked {
+		event.RelatedParkEventID = parkEventID
+		event.Timestamp = startTime
+	}
+	log.Print(event)
+	return event
 }

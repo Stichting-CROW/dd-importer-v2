@@ -29,7 +29,7 @@ var ctx = context.Background()
 
 func (processor DataProcessor) EventProcessor() {
 	for {
-		events := <-processor.eventChan
+		events := <-processor.EventChan
 		log.Print(events)
 		for _, event := range events {
 			processor.ProcessEvent(event)
@@ -45,6 +45,8 @@ func (processor DataProcessor) ProcessEvent(event Event) {
 		event = processor.checkOut(event)
 	case "vehicle_moved":
 		event = processor.vehicleMoved(event)
+	case "correcting_check_out":
+		event = processor.correctingCheckOut(event)
 	}
 	if event.EventType == "" {
 		return
@@ -67,12 +69,26 @@ func (processor DataProcessor) checkIn(event Event) Event {
 	previousEvents := processor.getLastEvents(event.getKey())
 
 	if len(previousEvents) == 0 {
-		event = processor.StartParkEvent(event)
+		event = processor.firstCheckIn(event)
 		return event
 	}
 	event = processor.checkIfTripIsMade(event, previousEvents)
 
 	return event
+}
+
+// This function should be called when a vehicle is checked in for the first time.
+// This function tries to reuse a existing park_event.
+func (processor DataProcessor) firstCheckIn(event Event) Event {
+	newEvent := processor.GetLastParkEvent(event)
+	// No existing park_event exits.
+	if newEvent.RelatedParkEventID == 0 {
+		log.Print("Create new park_event instead of reusing existing.")
+		newEvent = processor.StartParkEvent(event)
+	} else {
+		log.Print("Reuse existing park_event.")
+	}
+	return newEvent
 }
 
 func (processor DataProcessor) checkIfTripIsMade(event Event, previousEvents []Event) Event {
@@ -91,7 +107,7 @@ func (processor DataProcessor) checkIfTripIsMade(event Event, previousEvents []E
 
 	event.RelatedTripID = lastEvent.RelatedTripID
 	log.Printf("End tripEvent %v", event)
-	log.Print("Previous event %v", lastEvent)
+	log.Printf("Previous event %v", lastEvent)
 	event = processor.EndTrip(event)
 	event = processor.StartParkEvent(event)
 	return event
@@ -107,7 +123,7 @@ func checkIfTripShouldBeResetted(checkIn Event, previousCheckOut Event) bool {
 func (processor DataProcessor) checkOut(event Event) Event {
 	previousEvents := processor.getLastEvents(event.getKey())
 	if len(previousEvents) == 0 {
-		log.Print("There is something seriously wrong, a checkOut is always preceded at least one checkIn, possibly there is some data damaged", event)
+		log.Print("There is something seriously wrong, a checkOut is always preceded at least one checkIn, possibly there is some data damaged.", event)
 		return event
 	}
 
@@ -115,6 +131,12 @@ func (processor DataProcessor) checkOut(event Event) Event {
 	processor.EndParkEvent(event)
 	event = processor.StartTrip(event)
 
+	return event
+}
+
+func (processor DataProcessor) correctingCheckOut(event Event) Event {
+	log.Print("End a park event that was missed before this program was started.")
+	processor.EndParkEvent(event)
 	return event
 }
 

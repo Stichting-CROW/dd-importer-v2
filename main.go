@@ -7,8 +7,11 @@ import (
 	"deelfietsdashboard-importer/process"
 	"encoding/json"
 	"log"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/jmoiron/sqlx"
 )
 
 func main() {
@@ -25,6 +28,7 @@ func importLoop(feeds []feed.Feed, dataProcessor process.DataProcessor) {
 	var waitGroup sync.WaitGroup
 
 	lastTimeUpdateFeedConfig := time.Time{}
+	firstImport := true
 	for {
 		if time.Now().Sub(lastTimeUpdateFeedConfig) >= time.Minute*1 {
 			lastTimeUpdateFeedConfig = time.Now()
@@ -39,9 +43,18 @@ func importLoop(feeds []feed.Feed, dataProcessor process.DataProcessor) {
 		waitGroup.Wait()
 		importDuration := time.Now().Sub(startImport)
 		log.Printf("All imports took %v", importDuration)
+		if firstImport {
+			firstImport = false
+			log.Print("This is the first import run cleanup:")
+			events := cleanup(feeds, dataProcessor)
+			dataProcessor.EventChan <- events
+			importDuration = time.Now().Sub(startImport)
+			log.Printf("All imports including cleanup took %v", importDuration)
+		}
 		if importDuration.Seconds() <= 30 {
 			time.Sleep(time.Second*30 - importDuration)
 		}
+
 	}
 }
 
@@ -77,7 +90,6 @@ func lookUpFeedID(oldData []feed.Feed, ID int) feed.Feed {
 		}
 	}
 	return feed.Feed{}
-
 }
 
 func queryNewFeeds(dataProcessor process.DataProcessor) []feed.Feed {
@@ -105,15 +117,76 @@ func queryNewFeeds(dataProcessor process.DataProcessor) []feed.Feed {
 func parseAuthentication(newFeed feed.Feed, data []byte) feed.Feed {
 	var result map[string]interface{}
 	json.Unmarshal([]byte(data), &result)
+	if _, ok := result["authentication_type"]; !ok {
+		log.Print("No authentication.")
+		return newFeed
+	}
 	newFeed.AuthenticationType = result["authentication_type"].(string)
 	switch newFeed.AuthenticationType {
 	case "token":
 		newFeed.ApiKeyName = result["ApiKeyName"].(string)
 		newFeed.ApiKey = result["ApiKey"].(string)
 	case "oauth2":
-		newFeed.OAuth2Credentials.OauthTokenBody = result["OAuth2Credentials"]
+		newFeed.OAuth2Credentials.OauthTokenBody = result["OAuth2Credentials"].(map[string]interface{})
 		newFeed.OAuth2Credentials.TokenURL = result["TokenURL"].(string)
 	}
 
 	return newFeed
+}
+
+// This function checkOuts all the bikes that are not in a feed anymore when the program starts running.
+func cleanup(feeds []feed.Feed, dataProcessor process.DataProcessor) []process.Event {
+	log.Print("Wait 25s until all events are processed.")
+	time.Sleep(time.Second * 5)
+	events := []process.Event{}
+	operators := map[string]bool{}
+	bikeIDsInFeed := map[string]bool{}
+	log.Print("hier")
+	for _, feed := range feeds {
+		if len(feed.LastImport) == 0 {
+			log.Print("One of the feeds was failing so stop the cleanup proces.")
+			return events
+		}
+		operators[feed.OperatorID] = true
+		for bikeId := range feed.LastImport {
+			bikeIDsInFeed[feed.OperatorID+":"+bikeId] = true
+		}
+	}
+
+	rows := getAllParkedBikesFromDatabase(dataProcessor, operators)
+	for rows.Next() {
+		event := process.Event{}
+		err := rows.Scan(&event.OperatorID, &event.Bike.BikeID, &event.RelatedParkEventID)
+		if err != nil {
+			log.Print(err)
+		}
+		if _, ok := bikeIDsInFeed[event.Bike.BikeID]; !ok {
+			log.Print("BikeID not found", event.Bike.BikeID)
+			event.EventType = "correcting_check_out"
+			event.Timestamp = time.Now()
+			events = append(events, event)
+		}
+
+	}
+
+	return events
+}
+
+func getAllParkedBikesFromDatabase(dataProcessor process.DataProcessor, operators map[string]bool) *sqlx.Rows {
+	keys := []string{}
+	for key := range operators {
+		keys = append(keys, key)
+	}
+	activeOperators := strings.Join(keys, ",")
+
+	stmt := `SELECT system_id, bike_id, park_event_id 
+		FROM park_events 
+		WHERE end_time is null 
+		AND system_id IN ($1);
+	`
+	rows, err := dataProcessor.DB.Queryx(stmt, activeOperators)
+	if err != nil {
+		log.Print(err)
+	}
+	return rows
 }

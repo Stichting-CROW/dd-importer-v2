@@ -20,7 +20,7 @@ type Result struct {
 
 // DataProcessor struct for eventchannel and redis.
 type DataProcessor struct {
-	eventChan chan []Event
+	EventChan chan []Event
 	rdb       *redis.Client
 	DB        *sqlx.DB
 }
@@ -51,7 +51,7 @@ func InitDataProcessor() DataProcessor {
 			Password: "", // no password set
 			DB:       0,  // use default DB
 		}),
-		eventChan: make(chan []Event),
+		EventChan: make(chan []Event),
 		DB:        db,
 	}
 
@@ -66,6 +66,6 @@ func (processor DataProcessor) ProcessNewData(strategy string, old map[string]fe
 	case "gps":
 		result = CleanCompare(old, new)
 	}
-	processor.eventChan <- result.CreatedEvents
+	processor.EventChan <- result.CreatedEvents
 	return result
 }
