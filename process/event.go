@@ -115,8 +115,8 @@ func (processor DataProcessor) checkIfTripIsMade(event Event, previousEvents []E
 
 func checkIfTripShouldBeResetted(checkIn Event, previousCheckOut Event) bool {
 	durationShorterThanThreshold := checkIn.Timestamp.Sub(previousCheckOut.Timestamp) < time.Minute*15
-	distanceShorterThenThreshold := geoutil.Distance(checkIn.Bike.Lon, checkIn.Bike.Lat,
-		previousCheckOut.Bike.Lon, previousCheckOut.Bike.Lon) < 100
+	distanceShorterThenThreshold := geoutil.Distance(checkIn.Bike.Lat, checkIn.Bike.Lon,
+		previousCheckOut.Bike.Lat, previousCheckOut.Bike.Lon) < 100
 	return durationShorterThanThreshold && distanceShorterThenThreshold
 }
 
