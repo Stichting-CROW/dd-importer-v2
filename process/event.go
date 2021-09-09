@@ -28,11 +28,19 @@ func (event Event) getKey() string {
 var ctx = context.Background()
 
 func (processor DataProcessor) EventProcessor() {
+	counter := 0
 	for {
 		events := <-processor.EventChan
-		log.Print(events)
+		if len(processor.EventChan) > 10 {
+			log.Printf("%d events in queue", len(processor.EventChan))
+			log.Println("EventProcessor werkt te langzaam, vandaar deze melding.")
+		}
 		for _, event := range events {
 			processor.ProcessEvent(event)
+			counter += 1
+			if counter%1000 == 0 {
+				log.Printf("[EventProcessor] Processed %d messages.", counter)
+			}
 		}
 	}
 }
@@ -51,7 +59,6 @@ func (processor DataProcessor) ProcessEvent(event Event) {
 	if event.EventType == "" {
 		return
 	}
-
 	bEvent, err := msgpack.Marshal(&event)
 	_, err = processor.rdb.LPush(event.getKey(), bEvent).Result()
 	if err != nil {
@@ -73,7 +80,6 @@ func (processor DataProcessor) checkIn(event Event) Event {
 		return event
 	}
 	event = processor.checkIfTripIsMade(event, previousEvents)
-
 	return event
 }
 
@@ -83,10 +89,8 @@ func (processor DataProcessor) firstCheckIn(event Event) Event {
 	newEvent := processor.GetLastParkEvent(event)
 	// No existing park_event exits.
 	if newEvent.RelatedParkEventID == 0 {
-		log.Print("Create new park_event instead of reusing existing.")
 		newEvent = processor.StartParkEvent(event)
 	} else {
-		log.Print("Reuse existing park_event.")
 	}
 	return newEvent
 }
@@ -94,20 +98,20 @@ func (processor DataProcessor) firstCheckIn(event Event) Event {
 func (processor DataProcessor) checkIfTripIsMade(event Event, previousEvents []Event) Event {
 	lastEvent := previousEvents[0]
 	if lastEvent.EventType != "check_out" {
-		log.Printf("Last Event was not a check_out that is strange behaviour.... see details %v, there is no trip made.", event)
-		log.Printf("For now handle thas as a movement, only as the vehicle is moved this event is registered.")
+		// log.Printf("Last Event was not a check_out that is strange behaviour.... see details %v, there is no trip made.", event)
+		// log.Printf("For now handle thas as a movement, only as the vehicle is moved this event is registered.")
 		event.EventType = "check_in_after_reboot"
 		event.Remark = "new check_in after reboot"
 		return processor.vehicleMoved(event)
 	}
 	if checkIfTripShouldBeResetted(event, lastEvent) == true {
-		log.Print("This trip should be resetted. ", event.Bike.BikeID)
+		//log.Print("This trip should be resetted. ", event.Bike.BikeID)
 		return processor.resetTrip(event, previousEvents)
 	}
 
 	event.RelatedTripID = lastEvent.RelatedTripID
-	log.Printf("End tripEvent %v", event)
-	log.Printf("Previous event %v", lastEvent)
+	//log.Printf("End tripEvent %v", event)
+	//log.Printf("Previous event %v", lastEvent)
 	event = processor.EndTrip(event)
 	event = processor.StartParkEvent(event)
 	return event
@@ -149,18 +153,17 @@ func (processor DataProcessor) vehicleMoved(event Event) Event {
 	previousEvent := previousEvents[0]
 
 	distanceMoved := geoutil.Distance(event.Bike.Lat, event.Bike.Lon, previousEvent.Bike.Lat, previousEvent.Bike.Lon)
-	log.Print("Distance moved: ", distanceMoved)
 	if distanceMoved > 500 {
-		log.Print("End old park_event")
+		//log.Print("End old park_event")
 		previousEvent.Timestamp = event.Timestamp
 		processor.EndParkEvent(previousEvent)
-		log.Print("Create new park_event.")
+		//log.Print("Create new park_event.")
 		event = processor.StartParkEvent(event)
 	} else if distanceMoved < 500 && distanceMoved > 0.1 {
-		log.Print("Update existing park_event.")
+		//log.Print("Update existing park_event.")
 		event = processor.UpdateLocationParkEvent(event, previousEvent)
 	} else {
-		log.Print("Do nothing, distance < 0.1m")
+		//log.Print("Do nothing, distance < 0.1m")
 		return Event{}
 	}
 	event.Remark = fmt.Sprintf("Movement: %.2f", distanceMoved)

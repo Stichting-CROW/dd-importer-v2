@@ -29,7 +29,7 @@ type DataProcessor struct {
 func InitDataProcessor() DataProcessor {
 	connStr := ""
 	if os.Getenv("DEV") == "true" {
-		connStr = "dbname=deelfietsdashboard sslmode=disable"
+		connStr = "dbname=deelfietsdashboard4 sslmode=disable"
 	} else {
 		connStr = fmt.Sprintf("dbname=%s user=%s host=%s password=%s sslmode=disable",
 			os.Getenv("DB_NAME"), os.Getenv("DB_USER"), os.Getenv("DB_HOST"), os.Getenv("DB_PASSWORD"))
@@ -51,7 +51,7 @@ func InitDataProcessor() DataProcessor {
 			Password: "", // no password set
 			DB:       0,  // use default DB
 		}),
-		EventChan: make(chan []Event),
+		EventChan: make(chan []Event, 100),
 		DB:        db,
 	}
 
@@ -62,8 +62,10 @@ func (processor DataProcessor) ProcessNewData(strategy string, old map[string]fe
 	result := Result{}
 	switch strategy {
 	case "clean":
+		//log.Print("clean")
 		result = CleanCompare(old, new)
 	case "gps":
+		//log.Print("gps")
 		result = CleanCompare(old, new)
 	}
 	processor.EventChan <- result.CreatedEvents

@@ -1,7 +1,6 @@
 package process
 
 import (
-	"log"
 	"time"
 )
 
@@ -64,6 +63,5 @@ func (processor DataProcessor) GetLastParkEvent(event Event) Event {
 		event.RelatedParkEventID = parkEventID
 		event.Timestamp = startTime
 	}
-	log.Print(event)
 	return event
 }

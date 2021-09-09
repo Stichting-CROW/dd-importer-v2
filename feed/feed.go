@@ -12,6 +12,7 @@ type Feed struct {
 	ApiKeyName         string
 	ApiKey             string
 	NumberOfPulls      int
+	RequestHeaders     map[string]string
 	Type               string
 	LastImport         map[string]Bike
 	ImportStrategy     string

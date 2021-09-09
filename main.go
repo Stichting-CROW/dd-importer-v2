@@ -18,7 +18,7 @@ func main() {
 	feeds := []feed.Feed{}
 	dataProcessor := process.InitDataProcessor()
 
-	// Start processing of events in background.
+	//Start processing of events in background.
 	go dataProcessor.EventProcessor()
 
 	importLoop(feeds, dataProcessor)
@@ -30,25 +30,25 @@ func importLoop(feeds []feed.Feed, dataProcessor process.DataProcessor) {
 	lastTimeUpdateFeedConfig := time.Time{}
 	firstImport := true
 	for {
-		if time.Now().Sub(lastTimeUpdateFeedConfig) >= time.Minute*1 {
+		if time.Since(lastTimeUpdateFeedConfig) >= time.Minute*1 {
 			lastTimeUpdateFeedConfig = time.Now()
 			feeds = loadFeeds(feeds, dataProcessor)
 		}
 
 		startImport := time.Now()
-		for index, _ := range feeds {
+		for index := range feeds {
 			waitGroup.Add(1)
 			go importFeed(&feeds[index], &waitGroup, dataProcessor)
 		}
 		waitGroup.Wait()
-		importDuration := time.Now().Sub(startImport)
+		importDuration := time.Since(startImport)
 		log.Printf("All imports took %v", importDuration)
 		if firstImport {
 			firstImport = false
 			log.Print("This is the first import run cleanup:")
 			events := cleanup(feeds, dataProcessor)
 			dataProcessor.EventChan <- events
-			importDuration = time.Now().Sub(startImport)
+			importDuration = time.Since(startImport)
 			log.Printf("All imports including cleanup took %v", importDuration)
 		}
 		if importDuration.Seconds() <= 30 {
@@ -67,6 +67,8 @@ func importFeed(operator_feed *feed.Feed, waitGroup *sync.WaitGroup, dataProcess
 	case "tomp":
 		newBikes = tomp.ImportFeed(operator_feed)
 	}
+	// keobike en gosharing gaan fout
+	log.Printf("[%s] %s import finished, %d vehicles in feed", operator_feed.OperatorID, operator_feed.Type, len(newBikes))
 	operator_feed.LastImport = dataProcessor.ProcessNewData(operator_feed.ImportStrategy, operator_feed.LastImport, newBikes).CurrentBikesInFeed
 }
 
@@ -94,7 +96,7 @@ func lookUpFeedID(oldData []feed.Feed, ID int) feed.Feed {
 
 func queryNewFeeds(dataProcessor process.DataProcessor) []feed.Feed {
 	stmt := `SELECT feed_id, system_id, feed_url, 
-		feed_type, import_strategy, authentication, last_time_updated
+		feed_type, import_strategy, authentication, last_time_updated, request_headers
 		FROM feeds
 		ORDER BY feed_id
 	`
@@ -107,10 +109,13 @@ func queryNewFeeds(dataProcessor process.DataProcessor) []feed.Feed {
 	for rows.Next() {
 		newFeed := feed.Feed{}
 		authentication := []byte{}
-		rows.Scan(&newFeed.ID, &newFeed.OperatorID, &newFeed.Url, &newFeed.Type, &newFeed.ImportStrategy, &authentication, &newFeed.LastTimeUpdated)
+		requestHeaders := []byte{}
+		rows.Scan(&newFeed.ID, &newFeed.OperatorID, &newFeed.Url, &newFeed.Type, &newFeed.ImportStrategy, &authentication, &newFeed.LastTimeUpdated, &requestHeaders)
 		newFeed = parseAuthentication(newFeed, authentication)
+		json.Unmarshal([]byte(requestHeaders), &newFeed.RequestHeaders)
 		feeds = append(feeds, newFeed)
 	}
+	log.Printf("Feeds opnieuw geïmporteerd, op dit moment zijn er %d feeds actief.", len(feeds))
 	return feeds
 }
 
@@ -118,7 +123,6 @@ func parseAuthentication(newFeed feed.Feed, data []byte) feed.Feed {
 	var result map[string]interface{}
 	json.Unmarshal([]byte(data), &result)
 	if _, ok := result["authentication_type"]; !ok {
-		log.Print("No authentication.")
 		return newFeed
 	}
 	newFeed.AuthenticationType = result["authentication_type"].(string)
@@ -137,20 +141,20 @@ func parseAuthentication(newFeed feed.Feed, data []byte) feed.Feed {
 // This function checkOuts all the bikes that are not in a feed anymore when the program starts running.
 func cleanup(feeds []feed.Feed, dataProcessor process.DataProcessor) []process.Event {
 	log.Print("Wait 25s until all events are processed.")
-	time.Sleep(time.Second * 5)
+	time.Sleep(time.Second * 25)
 	events := []process.Event{}
 	operators := map[string]bool{}
 	bikeIDsInFeed := map[string]bool{}
-	log.Print("hier")
 	for _, feed := range feeds {
-		if len(feed.LastImport) == 0 {
-			log.Print("One of the feeds was failing so stop the cleanup proces.")
-			return events
+		if len(feed.LastImport) != 0 {
+			operators[feed.OperatorID] = true
+			for bikeId := range feed.LastImport {
+				bikeIDsInFeed[feed.OperatorID+":"+bikeId] = true
+			}
+		} else {
+			log.Printf("%s failed to import (or has at least 0 bicuycles in it's endpoint).", feed.OperatorID)
 		}
-		operators[feed.OperatorID] = true
-		for bikeId := range feed.LastImport {
-			bikeIDsInFeed[feed.OperatorID+":"+bikeId] = true
-		}
+
 	}
 
 	rows := getAllParkedBikesFromDatabase(dataProcessor, operators)

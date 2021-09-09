@@ -17,13 +17,13 @@ func (feed Feed) DownloadData() *http.Response {
 		return nil
 	}
 	req = feed.addAuth(req)
+	req = feed.addAdditionalRequestHeaders(req)
 
 	res, err := client.Do(req)
 	if err != nil {
 		log.Print(err)
 		return nil
 	}
-	log.Print(res.Status)
 	if res.StatusCode != http.StatusOK {
 		log.Printf("[%s] Loading data from %s not possible. Status code: %d", feed.OperatorID, feed.Url, res.StatusCode)
 		return nil
@@ -36,7 +36,6 @@ func (feed Feed) addAuth(r *http.Request) *http.Request {
 	switch feed.AuthenticationType {
 	case "oauth2":
 		token := feed.OAuth2Credentials.GetAccessToken()
-		log.Print(token)
 		r.Header.Add("authorization", "Bearer "+token)
 	case "token":
 		if feed.ApiKeyName != "" {
@@ -44,5 +43,12 @@ func (feed Feed) addAuth(r *http.Request) *http.Request {
 		}
 	}
 
+	return r
+}
+
+func (feed Feed) addAdditionalRequestHeaders(r *http.Request) *http.Request {
+	for key, value := range feed.RequestHeaders {
+		r.Header.Add(key, value)
+	}
 	return r
 }
