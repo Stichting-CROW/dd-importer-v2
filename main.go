@@ -3,6 +3,7 @@ package main
 import (
 	"deelfietsdashboard-importer/feed"
 	"deelfietsdashboard-importer/feed/gbfs"
+	"deelfietsdashboard-importer/feed/mds"
 	"deelfietsdashboard-importer/feed/tomp"
 	"deelfietsdashboard-importer/process"
 	"encoding/json"
@@ -66,6 +67,8 @@ func importFeed(operator_feed *feed.Feed, waitGroup *sync.WaitGroup, dataProcess
 		newBikes = gbfs.ImportFeed(operator_feed)
 	case "tomp":
 		newBikes = tomp.ImportFeed(operator_feed)
+	case "mds":
+		newBikes = mds.ImportFeed(operator_feed)
 	}
 	// keobike en gosharing gaan fout
 	log.Printf("[%s] %s import finished, %d vehicles in feed", operator_feed.OperatorID, operator_feed.Type, len(newBikes))
@@ -152,7 +155,7 @@ func cleanup(feeds []feed.Feed, dataProcessor process.DataProcessor) []process.E
 				bikeIDsInFeed[feed.OperatorID+":"+bikeId] = true
 			}
 		} else {
-			log.Printf("%s failed to import (or has at least 0 bicuycles in it's endpoint).", feed.OperatorID)
+			log.Printf("%s failed to import (or has at least 0 vehicles in it's endpoint).", feed.OperatorID)
 		}
 
 	}
