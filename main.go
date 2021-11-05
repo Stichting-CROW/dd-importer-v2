@@ -71,8 +71,22 @@ func importFeed(operator_feed *feed.Feed, waitGroup *sync.WaitGroup, dataProcess
 		newBikes = mds.ImportFeed(operator_feed)
 	}
 	// keobike en gosharing gaan fout
+	if operator_feed.DefaultVehicleType != nil {
+		newBikes = setDefaultInternalVehicleType(newBikes, *operator_feed.DefaultVehicleType)
+	}
+
 	log.Printf("[%s] %s import finished, %d vehicles in feed", operator_feed.OperatorID, operator_feed.Type, len(newBikes))
 	operator_feed.LastImport = dataProcessor.ProcessNewData(operator_feed.ImportStrategy, operator_feed.LastImport, newBikes).CurrentBikesInFeed
+}
+
+func setDefaultInternalVehicleType(bikes []feed.Bike, defaultType int) []feed.Bike {
+	for index := range bikes {
+		if bikes[index].InternalVehicleID == nil {
+			bikes[index].InternalVehicleID = &defaultType
+		}
+	}
+	return bikes
+
 }
 
 // load feeds from database.
@@ -99,7 +113,8 @@ func lookUpFeedID(oldData []feed.Feed, ID int) feed.Feed {
 
 func queryNewFeeds(dataProcessor process.DataProcessor) []feed.Feed {
 	stmt := `SELECT feed_id, system_id, feed_url, 
-		feed_type, import_strategy, authentication, last_time_updated, request_headers
+		feed_type, import_strategy, authentication, last_time_updated, request_headers,
+		default_vehicle_type
 		FROM feeds
 		ORDER BY feed_id
 	`
@@ -113,7 +128,10 @@ func queryNewFeeds(dataProcessor process.DataProcessor) []feed.Feed {
 		newFeed := feed.Feed{}
 		authentication := []byte{}
 		requestHeaders := []byte{}
-		rows.Scan(&newFeed.ID, &newFeed.OperatorID, &newFeed.Url, &newFeed.Type, &newFeed.ImportStrategy, &authentication, &newFeed.LastTimeUpdated, &requestHeaders)
+		rows.Scan(&newFeed.ID, &newFeed.OperatorID,
+			&newFeed.Url, &newFeed.Type, &newFeed.ImportStrategy,
+			&authentication, &newFeed.LastTimeUpdated, &requestHeaders,
+			&newFeed.DefaultVehicleType)
 		newFeed = parseAuthentication(newFeed, authentication)
 		json.Unmarshal([]byte(requestHeaders), &newFeed.RequestHeaders)
 		feeds = append(feeds, newFeed)

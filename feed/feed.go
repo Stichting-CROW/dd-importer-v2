@@ -8,6 +8,7 @@ import (
 type Feed struct {
 	ID                 int
 	OperatorID         string
+	DefaultVehicleType *int
 	Url                string
 	ApiKeyName         string
 	ApiKey             string
@@ -22,10 +23,11 @@ type Feed struct {
 }
 
 type Bike struct {
-	BikeID     string  `json:"bike_id"`
-	Lat        float64 `json:"lat"`
-	Lon        float64 `json:"lon"`
-	IsReserved bool    `json:"is_reserved"`
-	IsDisabled bool    `json:"is_disabled"`
-	SystemID   string  `json:"system_id"`
+	BikeID            string  `json:"bike_id"`
+	Lat               float64 `json:"lat"`
+	Lon               float64 `json:"lon"`
+	IsReserved        bool    `json:"is_reserved"`
+	IsDisabled        bool    `json:"is_disabled"`
+	SystemID          string  `json:"system_id"`
+	InternalVehicleID *int    `json:"internal_vehicle_id,omitempty"`
 }

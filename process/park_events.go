@@ -7,11 +7,11 @@ import (
 // StartParkEvent started a new park_event in the database when a bike is parked.
 func (processor DataProcessor) StartParkEvent(checkIn Event) Event {
 	stmt := `INSERT INTO park_events
-		(system_id, bike_id, location, start_time)
-		VALUES ($1, $2, ST_SetSRID(ST_Point($3, $4), 4326), $5)
+		(system_id, bike_id, location, start_time, vehicle_type_id)
+		VALUES ($1, $2, ST_SetSRID(ST_Point($3, $4), 4326), $5, $6)
 		RETURNING park_event_id
 	`
-	row := processor.DB.QueryRowx(stmt, checkIn.Bike.SystemID, checkIn.getKey(), checkIn.Bike.Lon, checkIn.Bike.Lat, checkIn.Timestamp)
+	row := processor.DB.QueryRowx(stmt, checkIn.Bike.SystemID, checkIn.getKey(), checkIn.Bike.Lon, checkIn.Bike.Lat, checkIn.Timestamp, checkIn.Bike.InternalVehicleID)
 	row.Scan(&checkIn.RelatedParkEventID)
 	return checkIn
 }

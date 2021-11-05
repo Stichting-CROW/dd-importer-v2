@@ -3,12 +3,12 @@ package process
 // StartTrip create a record in the trips table what is open.
 func (processor DataProcessor) StartTrip(checkOut Event) Event {
 	stmt := `INSERT INTO trips
-		(system_id, bike_id, start_location, start_time)
-		VALUES ($1, $2, ST_SetSRID(ST_Point($3, $4), 4326), $5)
+		(system_id, bike_id, start_location, start_time, vehicle_type_id)
+		VALUES ($1, $2, ST_SetSRID(ST_Point($3, $4), 4326), $5, $6)
 		RETURNING trip_id
 	`
 	row := processor.DB.QueryRowx(stmt, checkOut.Bike.SystemID, checkOut.getKey(),
-		checkOut.Bike.Lon, checkOut.Bike.Lat, checkOut.Timestamp)
+		checkOut.Bike.Lon, checkOut.Bike.Lat, checkOut.Timestamp, checkOut.Bike.InternalVehicleID)
 	row.Scan(&checkOut.RelatedTripID)
 	return checkOut
 }
