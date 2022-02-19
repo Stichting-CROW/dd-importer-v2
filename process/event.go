@@ -31,7 +31,7 @@ func (processor DataProcessor) EventProcessor() {
 	counter := 0
 	for {
 		events := <-processor.EventChan
-		if len(processor.EventChan) > 10 {
+		if len(processor.EventChan) > 5 {
 			log.Printf("%d events in queue", len(processor.EventChan))
 			log.Println("EventProcessor werkt te langzaam, vandaar deze melding.")
 		}

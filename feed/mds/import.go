@@ -70,8 +70,14 @@ func getData(feed *feed.Feed) []feed.Bike {
 func convertMds(mdsFeed MdsVehiclesRespone, systemID string) []feed.Bike {
 	vehicles := []feed.Bike{}
 	for _, mdsVehicle := range mdsFeed.Data.Vehicle {
-		vehicle := convertMdsToVehicle(mdsVehicle, systemID)
-		vehicles = append(vehicles, vehicle)
+		if mdsVehicle.LastVehicleState == "available" ||
+			mdsVehicle.LastVehicleState == "non_operational" ||
+			mdsVehicle.LastVehicleState == "reserved" ||
+			mdsVehicle.LastVehicleState == "elsewhere" {
+			vehicle := convertMdsToVehicle(mdsVehicle, systemID)
+			vehicles = append(vehicles, vehicle)
+		}
+
 	}
 	return vehicles
 }
