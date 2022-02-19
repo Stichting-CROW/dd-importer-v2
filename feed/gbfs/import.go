@@ -16,11 +16,11 @@ type FreeBikeStatus struct {
 
 // ImportFeed is a function is called to import data from a feed.
 func ImportFeed(feed *feed.Feed) []feed.Bike {
-	return getData(feed)
+	return getData(feed, feed.Url)
 }
 
-func getData(feed *feed.Feed) []feed.Bike {
-	res := feed.DownloadData()
+func getData(feed *feed.Feed, url string) []feed.Bike {
+	res := feed.DownloadData(url)
 	if res == nil {
 		return nil
 	}

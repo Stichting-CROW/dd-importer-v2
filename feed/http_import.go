@@ -6,12 +6,12 @@ import (
 	"time"
 )
 
-func (feed Feed) DownloadData() *http.Response {
+func (feed Feed) DownloadData(url string) *http.Response {
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 	}
 
-	req, err := http.NewRequest("GET", feed.Url, nil)
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		log.Print(err)
 		return nil
@@ -25,7 +25,7 @@ func (feed Feed) DownloadData() *http.Response {
 		return nil
 	}
 	if res.StatusCode != http.StatusOK {
-		log.Printf("[%s] Loading data from %s not possible. Status code: %d", feed.OperatorID, feed.Url, res.StatusCode)
+		log.Printf("[%s] Loading data from %s not possible. Status code: %d", feed.OperatorID, url, res.StatusCode)
 		return nil
 	}
 	return res

@@ -33,7 +33,7 @@ func ImportFeed(feed *feed.Feed) []feed.Bike {
 }
 
 func getData(feed *feed.Feed) []feed.Bike {
-	res := feed.DownloadData()
+	res := feed.DownloadData(feed.Url)
 	if res == nil {
 		return nil
 	}
