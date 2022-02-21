@@ -86,15 +86,37 @@ func convertMdsToVehicle(mdsVehicle MdsVehicle, systemID string) feed.Bike {
 	isDisabled := mdsVehicle.LastVehicleState == "non_operational"
 	isReserved := mdsVehicle.LastVehicleState == "reserved"
 	return feed.Bike{
-		BikeID:     convertToVehicleId(mdsVehicle.VehicleID),
-		Lat:        mdsVehicle.CurrentLocation.Geometry.Coordinates[1],
-		Lon:        mdsVehicle.CurrentLocation.Geometry.Coordinates[0],
-		IsReserved: isReserved,
-		IsDisabled: isDisabled,
-		SystemID:   systemID,
+		BikeID:            convertToVehicleId(mdsVehicle.VehicleID),
+		Lat:               mdsVehicle.CurrentLocation.Geometry.Coordinates[1],
+		Lon:               mdsVehicle.CurrentLocation.Geometry.Coordinates[0],
+		IsReserved:        isReserved,
+		IsDisabled:        isDisabled,
+		SystemID:          systemID,
+		InternalVehicleID: convertVehicleType(mdsVehicle.VehicleType, mdsVehicle.PropulsionTypes),
 	}
 }
 
 func convertToVehicleId(vehicleID string) string {
 	return strings.ToLower(strings.Replace(vehicleID, " ", "_", -1))
+}
+
+func convertVehicleType(vehicleType string, propulsionTypes []string) *int {
+	vehicleTypePropultionType := vehicleType
+	if len(propulsionTypes) > 0 {
+		vehicleTypePropultionType = vehicleTypePropultionType + ":" + propulsionTypes[0]
+	}
+
+	// Hardcoded values from DB.
+	defaultVehicleType := map[string]int{
+		"bicycle:human":                 5,
+		"bicycle:electric_assist":       4,
+		"cargo_bicycle:electric_assist": 2,
+		"moped:electric":                1,
+	}
+	result, ok := defaultVehicleType[vehicleTypePropultionType]
+	if !ok {
+		return nil
+	}
+	return &result
+
 }
