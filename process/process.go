@@ -29,7 +29,7 @@ type DataProcessor struct {
 func InitDataProcessor() DataProcessor {
 	connStr := ""
 	if os.Getenv("DEV") == "true" {
-		connStr = "dbname=deelfietsdashboard4 sslmode=disable"
+		connStr = "dbname=deelfietsdashboard sslmode=disable"
 	} else {
 		connStr = fmt.Sprintf("dbname=%s user=%s host=%s password=%s sslmode=disable",
 			os.Getenv("DB_NAME"), os.Getenv("DB_USER"), os.Getenv("DB_HOST"), os.Getenv("DB_PASSWORD"))

@@ -6,20 +6,21 @@ import (
 )
 
 type Feed struct {
-	ID                 int
-	OperatorID         string
-	DefaultVehicleType *int
-	Url                string
-	ApiKeyName         string
-	ApiKey             string
-	NumberOfPulls      int
-	RequestHeaders     map[string]string
-	Type               string
-	LastImport         map[string]Bike
-	ImportStrategy     string
-	OAuth2Credentials  auth.OauthCredentials
-	AuthenticationType string
-	LastTimeUpdated    time.Time
+	ID                         int
+	OperatorID                 string
+	DefaultVehicleType         *int
+	Url                        string
+	ApiKeyName                 string
+	ApiKey                     string
+	NumberOfPulls              int
+	RequestHeaders             map[string]string
+	Type                       string
+	LastImport                 map[string]Bike
+	ImportStrategy             string
+	OAuth2Credentials          auth.OauthCredentials
+	OAuth2CredentialsGosharing auth.OauthCredentialsGosharing
+	AuthenticationType         string
+	LastTimeUpdated            time.Time
 }
 
 type Bike struct {

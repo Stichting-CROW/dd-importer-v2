@@ -99,6 +99,10 @@ func loadFeeds(oldFeeds []feed.Feed, dataProcessor process.DataProcessor) []feed
 		oldFeed := lookUpFeedID(oldFeeds, newFeed.ID)
 		newFeeds[index].LastImport = oldFeed.LastImport
 		newFeeds[index].NumberOfPulls = oldFeed.NumberOfPulls
+		newFeeds[index].OAuth2Credentials.AccessToken = oldFeed.OAuth2Credentials.AccessToken
+		newFeeds[index].OAuth2Credentials.ExpireTime = oldFeed.OAuth2Credentials.ExpireTime
+		newFeeds[index].OAuth2CredentialsGosharing.AccessToken = oldFeed.OAuth2CredentialsGosharing.AccessToken
+		newFeeds[index].OAuth2CredentialsGosharing.ExpireTime = oldFeed.OAuth2CredentialsGosharing.ExpireTime
 	}
 	return newFeeds
 
@@ -134,6 +138,7 @@ func queryNewFeeds(dataProcessor process.DataProcessor) []feed.Feed {
 			&newFeed.Url, &newFeed.Type, &newFeed.ImportStrategy,
 			&authentication, &newFeed.LastTimeUpdated, &requestHeaders,
 			&newFeed.DefaultVehicleType)
+		// Tijdelijk filter voor testen.
 		newFeed = parseAuthentication(newFeed, authentication)
 		json.Unmarshal([]byte(requestHeaders), &newFeed.RequestHeaders)
 		feeds = append(feeds, newFeed)
@@ -156,6 +161,9 @@ func parseAuthentication(newFeed feed.Feed, data []byte) feed.Feed {
 	case "oauth2":
 		newFeed.OAuth2Credentials.OauthTokenBody = result["OAuth2Credentials"].(map[string]interface{})
 		newFeed.OAuth2Credentials.TokenURL = result["TokenURL"].(string)
+	case "oauth2-gosharing":
+		newFeed.OAuth2CredentialsGosharing.OauthTokenBody = result["OAuth2Credentials"].(map[string]interface{})
+		newFeed.OAuth2CredentialsGosharing.TokenURL = result["TokenURL"].(string)
 	}
 
 	return newFeed

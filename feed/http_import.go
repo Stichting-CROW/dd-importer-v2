@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func (feed Feed) DownloadData(url string) *http.Response {
+func (feed *Feed) DownloadData(url string) *http.Response {
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 	}
@@ -32,7 +32,7 @@ func (feed Feed) DownloadData(url string) *http.Response {
 
 }
 
-func (feed Feed) addAuth(r *http.Request) *http.Request {
+func (feed *Feed) addAuth(r *http.Request) *http.Request {
 	switch feed.AuthenticationType {
 	case "oauth2":
 		token := feed.OAuth2Credentials.GetAccessToken()
@@ -41,6 +41,9 @@ func (feed Feed) addAuth(r *http.Request) *http.Request {
 		if feed.ApiKeyName != "" {
 			r.Header.Add(feed.ApiKeyName, feed.ApiKey)
 		}
+	case "oauth2-gosharing":
+		token := feed.OAuth2CredentialsGosharing.GetAccessToken()
+		r.Header.Add("authorization", "Bearer "+token)
 	}
 
 	return r
