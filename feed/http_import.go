@@ -8,7 +8,7 @@ import (
 
 func (feed *Feed) DownloadData(url string) *http.Response {
 	client := &http.Client{
-		Timeout: 10 * time.Second,
+		Timeout: 15 * time.Second,
 	}
 
 	req, err := http.NewRequest("GET", url, nil)
