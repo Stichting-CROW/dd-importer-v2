@@ -8,4 +8,5 @@ require (
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/lib/pq v1.8.0
 	github.com/vmihailenco/msgpack/v5 v5.0.0-beta.1
+	github.com/xjem/t38c v0.9.6 // indirect
 )

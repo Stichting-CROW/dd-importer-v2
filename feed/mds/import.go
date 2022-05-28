@@ -93,6 +93,7 @@ func convertMdsToVehicle(mdsVehicle MdsVehicle, systemID string) feed.Bike {
 		IsDisabled:        isDisabled,
 		SystemID:          systemID,
 		InternalVehicleID: convertVehicleType(mdsVehicle.VehicleType, mdsVehicle.PropulsionTypes),
+		VehicleType:       mdsVehicle.VehicleType,
 	}
 }
 
@@ -101,9 +102,9 @@ func convertToVehicleId(vehicleID string) string {
 }
 
 func convertVehicleType(vehicleType string, propulsionTypes []string) *int {
-	vehicleTypePropultionType := vehicleType
+	vehicleTypePropulsionType := vehicleType
 	if len(propulsionTypes) > 0 {
-		vehicleTypePropultionType = vehicleTypePropultionType + ":" + propulsionTypes[0]
+		vehicleTypePropulsionType = vehicleTypePropulsionType + ":" + propulsionTypes[0]
 	}
 
 	// Hardcoded values from DB.
@@ -113,7 +114,7 @@ func convertVehicleType(vehicleType string, propulsionTypes []string) *int {
 		"cargo_bicycle:electric_assist": 2,
 		"moped:electric":                1,
 	}
-	result, ok := defaultVehicleType[vehicleTypePropultionType]
+	result, ok := defaultVehicleType[vehicleTypePropulsionType]
 	if !ok {
 		return nil
 	}

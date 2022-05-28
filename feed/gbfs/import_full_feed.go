@@ -66,6 +66,7 @@ func setVehicleTypeOnVehicles(vehicles []feed.Bike, vehicleTypes []VehicleType) 
 		externalVehicleTypeID := *vehicle.ExternalVehicleTypeID
 		if vehicleType, ok := vehicleTypeMap[externalVehicleTypeID]; ok {
 			vehicles[index].InternalVehicleID = &vehicleType.VehicleTypeId
+			vehicles[index].VehicleType = vehicleType.FormFactor
 		}
 	}
 	return vehicles

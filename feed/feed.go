@@ -9,6 +9,7 @@ type Feed struct {
 	ID                         int
 	OperatorID                 string
 	DefaultVehicleType         *int
+	DefaultFormFactor          *string
 	Url                        string
 	ApiKeyName                 string
 	ApiKey                     string
@@ -32,4 +33,5 @@ type Bike struct {
 	SystemID              string  `json:"system_id"`
 	InternalVehicleID     *int    `json:"internal_vehicle_id,omitempty"`
 	ExternalVehicleTypeID *string `json:"vehicle_type_id,omitempty"`
+	VehicleType           string  `json:"vehicle_type,omitempty"`
 }

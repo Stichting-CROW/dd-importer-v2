@@ -60,12 +60,13 @@ func convertTompAssetsToBikes(assetsTomp []Asset, systemID string) []feed.Bike {
 	bikes := []feed.Bike{}
 	for _, tompBike := range assetsTomp {
 		bike := feed.Bike{
-			BikeID:     tompBike.ID,
-			Lat:        tompBike.OverriddenProperties.Location.Coordinates.Lat,
-			Lon:        tompBike.OverriddenProperties.Location.Coordinates.Lng,
-			IsReserved: tompBike.IsReserved,
-			IsDisabled: tompBike.IsDisabled,
-			SystemID:   systemID,
+			BikeID:      tompBike.ID,
+			Lat:         tompBike.OverriddenProperties.Location.Coordinates.Lat,
+			Lon:         tompBike.OverriddenProperties.Location.Coordinates.Lng,
+			IsReserved:  tompBike.IsReserved,
+			IsDisabled:  tompBike.IsDisabled,
+			SystemID:    systemID,
+			VehicleType: "bicycle",
 		}
 		bikes = append(bikes, bike)
 	}

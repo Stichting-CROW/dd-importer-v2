@@ -21,6 +21,7 @@ func main() {
 
 	//Start processing of events in background.
 	go dataProcessor.EventProcessor()
+	go dataProcessor.VehicleProcessor()
 
 	importLoop(feeds, dataProcessor)
 }
@@ -74,17 +75,18 @@ func importFeed(operator_feed *feed.Feed, waitGroup *sync.WaitGroup, dataProcess
 	}
 	// keobike en gosharing gaan fout
 	if operator_feed.DefaultVehicleType != nil {
-		newBikes = setDefaultInternalVehicleType(newBikes, *operator_feed.DefaultVehicleType)
+		newBikes = setDefaultInternalVehicleType(newBikes, *operator_feed.DefaultVehicleType, *operator_feed.DefaultFormFactor)
 	}
 
 	log.Printf("[%s] %s import finished, %d vehicles in feed", operator_feed.OperatorID, operator_feed.Type, len(newBikes))
 	operator_feed.LastImport = dataProcessor.ProcessNewData(operator_feed.ImportStrategy, operator_feed.LastImport, newBikes).CurrentBikesInFeed
 }
 
-func setDefaultInternalVehicleType(bikes []feed.Bike, defaultType int) []feed.Bike {
+func setDefaultInternalVehicleType(bikes []feed.Bike, defaultType int, defaultFormFactor string) []feed.Bike {
 	for index := range bikes {
 		if bikes[index].InternalVehicleID == nil {
 			bikes[index].InternalVehicleID = &defaultType
+			bikes[index].VehicleType = defaultFormFactor
 		}
 	}
 	return bikes
@@ -118,10 +120,12 @@ func lookUpFeedID(oldData []feed.Feed, ID int) feed.Feed {
 }
 
 func queryNewFeeds(dataProcessor process.DataProcessor) []feed.Feed {
-	stmt := `SELECT feed_id, system_id, feed_url, 
+	stmt := `SELECT feed_id, feeds.system_id, feed_url, 
 		feed_type, import_strategy, authentication, last_time_updated, request_headers,
-		default_vehicle_type
+		default_vehicle_type, form_factor
 		FROM feeds
+		LEFT JOIN vehicle_type
+		ON default_vehicle_type = vehicle_type_id
 		ORDER BY feed_id
 	`
 	rows, err := dataProcessor.DB.Queryx(stmt)
@@ -137,7 +141,7 @@ func queryNewFeeds(dataProcessor process.DataProcessor) []feed.Feed {
 		rows.Scan(&newFeed.ID, &newFeed.OperatorID,
 			&newFeed.Url, &newFeed.Type, &newFeed.ImportStrategy,
 			&authentication, &newFeed.LastTimeUpdated, &requestHeaders,
-			&newFeed.DefaultVehicleType)
+			&newFeed.DefaultVehicleType, &newFeed.DefaultFormFactor)
 		// Tijdelijk filter voor testen.
 		newFeed = parseAuthentication(newFeed, authentication)
 		json.Unmarshal([]byte(requestHeaders), &newFeed.RequestHeaders)

@@ -9,6 +9,7 @@ import (
 	"github.com/go-redis/redis"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" // postgres
+	"github.com/xjem/t38c"
 )
 
 // Result is a container for new data.
@@ -20,9 +21,11 @@ type Result struct {
 
 // DataProcessor struct for eventchannel and redis.
 type DataProcessor struct {
-	EventChan chan []Event
-	rdb       *redis.Client
-	DB        *sqlx.DB
+	EventChan   chan []Event
+	VehicleChan chan []feed.Bike
+	rdb         *redis.Client
+	DB          *sqlx.DB
+	tile38      *t38c.Client
 }
 
 // InitDataProcessor sets up all dataprocessing.
@@ -45,14 +48,25 @@ func InitDataProcessor() DataProcessor {
 		redisAddress = os.Getenv("REDIS_HOST")
 	}
 
+	tile38Address := "localhost:9851"
+	if os.Getenv("DEV") != "true" {
+		redisAddress = os.Getenv("TILE38_HOST")
+	}
+
+	tile38, err := t38c.New(tile38Address, t38c.Debug)
+	if err != nil {
+		log.Fatal("Connecting with Tile38 not possible", err)
+	}
 	return DataProcessor{
 		rdb: redis.NewClient(&redis.Options{
 			Addr:     redisAddress,
 			Password: "", // no password set
 			DB:       0,  // use default DB
 		}),
-		EventChan: make(chan []Event, 100),
-		DB:        db,
+		EventChan:   make(chan []Event, 100),
+		VehicleChan: make(chan []feed.Bike, 100),
+		DB:          db,
+		tile38:      tile38,
 	}
 
 }
@@ -68,6 +82,7 @@ func (processor DataProcessor) ProcessNewData(strategy string, old map[string]fe
 		//log.Print("gps")
 		result = CleanCompare(old, new)
 	}
+	processor.VehicleChan <- new
 	processor.EventChan <- result.CreatedEvents
 	return result
 }
