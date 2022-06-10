@@ -189,7 +189,6 @@ func cleanup(feeds []feed.Feed, dataProcessor process.DataProcessor) []process.E
 		} else {
 			log.Printf("%s failed to import (or has at least 0 vehicles in it's endpoint).", feed.OperatorID)
 		}
-
 	}
 
 	rows := getAllParkedBikesFromDatabase(dataProcessor, operators)

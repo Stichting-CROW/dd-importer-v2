@@ -50,10 +50,10 @@ func InitDataProcessor() DataProcessor {
 
 	tile38Address := "localhost:9851"
 	if os.Getenv("DEV") != "true" {
-		redisAddress = os.Getenv("TILE38_HOST")
+		tile38Address = os.Getenv("TILE38_HOST")
 	}
 
-	tile38, err := t38c.New(tile38Address, t38c.Debug)
+	tile38, err := t38c.New(tile38Address)
 	if err != nil {
 		log.Fatal("Connecting with Tile38 not possible", err)
 	}

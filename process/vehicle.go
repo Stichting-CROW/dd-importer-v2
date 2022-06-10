@@ -3,13 +3,18 @@ package process
 import (
 	"deelfietsdashboard-importer/feed"
 	"log"
+	"time"
 )
 
 // This function writes all retreived vehicle locations to tile38.
 func (processor DataProcessor) VehicleProcessor() {
 	for {
 		vehicles := <-processor.VehicleChan
-		processor.importVehicles(vehicles)
+		if len(vehicles) > 0 {
+			startTime := time.Now()
+			processor.importVehicles(vehicles)
+			log.Printf("[VehicleImporter] [%s] took %d ms", vehicles[0].SystemID, time.Since(startTime).Milliseconds())
+		}
 	}
 }
 
