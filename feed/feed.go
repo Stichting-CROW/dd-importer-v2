@@ -20,6 +20,7 @@ type Feed struct {
 	ImportStrategy             string
 	OAuth2Credentials          auth.OauthCredentials
 	OAuth2CredentialsGosharing auth.OauthCredentialsGosharing
+	OAuth2CredentialsBolt      auth.OauthCredentialsBolt
 	AuthenticationType         string
 	LastTimeUpdated            time.Time
 }

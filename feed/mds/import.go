@@ -85,6 +85,10 @@ func convertMds(mdsFeed MdsVehiclesRespone, systemID string) []feed.Bike {
 func convertMdsToVehicle(mdsVehicle MdsVehicle, systemID string) feed.Bike {
 	isDisabled := mdsVehicle.LastVehicleState == "non_operational"
 	isReserved := mdsVehicle.LastVehicleState == "reserved"
+	if len(mdsVehicle.CurrentLocation.Geometry.Coordinates) == 0 {
+		mdsVehicle.CurrentLocation.Geometry = mdsVehicle.LastEventLocation.Geometry
+	}
+
 	return feed.Bike{
 		BikeID:            convertToVehicleId(mdsVehicle.VehicleID),
 		Lat:               mdsVehicle.CurrentLocation.Geometry.Coordinates[1],

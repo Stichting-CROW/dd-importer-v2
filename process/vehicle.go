@@ -24,7 +24,7 @@ func (processor DataProcessor) importVehicles(vehicles []feed.Bike) {
 
 		if err := processor.tile38.Keys.Set("vehicles", vehicleId).Point(vehicle.Lat, vehicle.Lon).
 			// optional params
-			Expiration(45).
+			Expiration(75).
 			Do(); err != nil {
 			log.Print(err)
 		}
