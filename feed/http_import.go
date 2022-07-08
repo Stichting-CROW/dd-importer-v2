@@ -47,6 +47,9 @@ func (feed *Feed) addAuth(r *http.Request) *http.Request {
 	case "oauth2-bolt":
 		token := feed.OAuth2CredentialsBolt.GetAccessToken()
 		r.Header.Add("authorization", "Bearer "+token)
+	case "oauth2-moveyou":
+		token := feed.OAuth2CredentialsMoveyou.GetAccessToken()
+		r.Header.Add("authorization", "Bearer "+token)
 	}
 
 	return r

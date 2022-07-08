@@ -21,6 +21,7 @@ type Feed struct {
 	OAuth2Credentials          auth.OauthCredentials
 	OAuth2CredentialsGosharing auth.OauthCredentialsGosharing
 	OAuth2CredentialsBolt      auth.OauthCredentialsBolt
+	OAuth2CredentialsMoveyou   auth.OauthCredentialsMoveyou
 	AuthenticationType         string
 	LastTimeUpdated            time.Time
 }

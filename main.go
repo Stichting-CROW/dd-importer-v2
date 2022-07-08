@@ -107,6 +107,8 @@ func loadFeeds(oldFeeds []feed.Feed, dataProcessor process.DataProcessor) []feed
 		newFeeds[index].OAuth2CredentialsGosharing.ExpireTime = oldFeed.OAuth2CredentialsGosharing.ExpireTime
 		newFeeds[index].OAuth2CredentialsBolt.AccessToken = oldFeed.OAuth2CredentialsBolt.AccessToken
 		newFeeds[index].OAuth2CredentialsBolt.ExpireTime = oldFeed.OAuth2CredentialsBolt.ExpireTime
+		newFeeds[index].OAuth2CredentialsMoveyou.AccessToken = oldFeed.OAuth2CredentialsMoveyou.AccessToken
+		newFeeds[index].OAuth2CredentialsMoveyou.ExpireTime = oldFeed.OAuth2CredentialsMoveyou.ExpireTime
 	}
 	return newFeeds
 
@@ -173,6 +175,9 @@ func parseAuthentication(newFeed feed.Feed, data []byte) feed.Feed {
 	case "oauth2-bolt":
 		newFeed.OAuth2CredentialsBolt.OauthTokenBody = result["OAuth2Credentials"].(map[string]interface{})
 		newFeed.OAuth2CredentialsBolt.TokenURL = result["TokenURL"].(string)
+	case "oauth2-moveyou":
+		newFeed.OAuth2CredentialsMoveyou.OauthTokenBody = result["OAuth2Credentials"].(map[string]interface{})
+		newFeed.OAuth2CredentialsMoveyou.TokenURL = result["TokenURL"].(string)
 	}
 
 	return newFeed
