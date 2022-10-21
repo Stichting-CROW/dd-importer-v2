@@ -9,7 +9,6 @@ import (
 	"github.com/go-redis/redis"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" // postgres
-	"github.com/xjem/t38c"
 )
 
 // Result is a container for new data.
@@ -21,12 +20,15 @@ type Result struct {
 
 // DataProcessor struct for eventchannel and redis.
 type DataProcessor struct {
-	EventChan   chan []Event
-	VehicleChan chan []feed.Bike
-	rdb         *redis.Client
-	DB          *sqlx.DB
-	tile38      *t38c.Client
+	EventChan           chan []Event
+	VehicleChan         chan []feed.Bike
+	rdb                 *redis.Client
+	DB                  *sqlx.DB
+	tile38              *redis.Client
+	NumberOfFeedsActive *int
 }
+
+var numberOfFeedsActive int
 
 // InitDataProcessor sets up all dataprocessing.
 func InitDataProcessor() DataProcessor {
@@ -53,10 +55,7 @@ func InitDataProcessor() DataProcessor {
 		tile38Address = os.Getenv("TILE38_HOST")
 	}
 
-	tile38, err := t38c.New(tile38Address)
-	if err != nil {
-		log.Fatal("Connecting with Tile38 not possible", err)
-	}
+	numberOfFeedsActive = 0
 	return DataProcessor{
 		rdb: redis.NewClient(&redis.Options{
 			Addr:     redisAddress,
@@ -66,7 +65,12 @@ func InitDataProcessor() DataProcessor {
 		EventChan:   make(chan []Event, 100),
 		VehicleChan: make(chan []feed.Bike, 100),
 		DB:          db,
-		tile38:      tile38,
+		tile38: redis.NewClient(&redis.Options{
+			Addr:     tile38Address,
+			Password: "", // no password set
+			DB:       0,  // use default DB
+		}),
+		NumberOfFeedsActive: &numberOfFeedsActive,
 	}
 
 }
@@ -76,10 +80,8 @@ func (processor DataProcessor) ProcessNewData(strategy string, old map[string]fe
 	result := Result{}
 	switch strategy {
 	case "clean":
-		//log.Print("clean")
 		result = CleanCompare(old, new)
 	case "gps":
-		//log.Print("gps")
 		result = CleanCompare(old, new)
 	}
 	processor.VehicleChan <- new

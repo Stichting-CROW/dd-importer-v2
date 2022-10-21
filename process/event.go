@@ -31,7 +31,7 @@ func (processor DataProcessor) EventProcessor() {
 	counter := 0
 	for {
 		events := <-processor.EventChan
-		if len(processor.EventChan) > 5 {
+		if len(processor.EventChan) > *processor.NumberOfFeedsActive {
 			log.Printf("%d events in queue", len(processor.EventChan))
 			log.Println("EventProcessor werkt te langzaam, vandaar deze melding.")
 		}
@@ -149,16 +149,12 @@ func (processor DataProcessor) vehicleMoved(event Event) Event {
 
 	distanceMoved := geoutil.Distance(event.Bike.Lat, event.Bike.Lon, previousEvent.Bike.Lat, previousEvent.Bike.Lon)
 	if distanceMoved > 500 {
-		//log.Print("End old park_event")
 		previousEvent.Timestamp = event.Timestamp
 		processor.EndParkEvent(previousEvent)
-		//log.Print("Create new park_event.")
 		event = processor.StartParkEvent(event)
 	} else if distanceMoved < 500 && distanceMoved > 0.1 {
-		//log.Print("Update existing park_event.")
 		event = processor.UpdateLocationParkEvent(event, previousEvent)
 	} else {
-		//log.Print("Do nothing, distance < 0.1m")
 		return Event{}
 	}
 	event.Remark = fmt.Sprintf("Movement: %.2f", distanceMoved)

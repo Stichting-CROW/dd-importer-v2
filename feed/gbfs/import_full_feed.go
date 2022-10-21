@@ -102,7 +102,6 @@ func getVehicleTypesFromApi(feed *feed.Feed, url string) []VehicleType {
 	decoder := json.NewDecoder(res.Body)
 	var gbfsVehicleTypeFeed GBFSVehicleTypeFeed
 	decoder.Decode(&gbfsVehicleTypeFeed)
-	log.Print(gbfsVehicleTypeFeed)
 
 	for _, vehicleType := range gbfsVehicleTypeFeed.Data.VehicleTypes {
 		vehicleTypes = append(vehicleTypes, convertGBFSVehicleType(vehicleType, feed.OperatorID))

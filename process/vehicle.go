@@ -4,6 +4,8 @@ import (
 	"deelfietsdashboard-importer/feed"
 	"log"
 	"time"
+
+	"github.com/go-redis/redis"
 )
 
 // This function writes all retreived vehicle locations to tile38.
@@ -19,14 +21,19 @@ func (processor DataProcessor) VehicleProcessor() {
 }
 
 func (processor DataProcessor) importVehicles(vehicles []feed.Bike) {
+	pipe := processor.tile38.Pipeline()
 	for _, vehicle := range vehicles {
 		vehicleId := vehicle.SystemID + ":" + vehicle.BikeID + ":" + vehicle.VehicleType
-
-		if err := processor.tile38.Keys.Set("vehicles", vehicleId).Point(vehicle.Lat, vehicle.Lon).
-			// optional params
-			Expiration(75).
-			Do(); err != nil {
+		setCmd := redis.NewStringCmd("SET", "vehicles", vehicleId, "EX", 70, "POINT", vehicle.Lat, vehicle.Lon)
+		err := pipe.Process(setCmd)
+		if err != nil {
 			log.Print(err)
 		}
+	}
+
+	_, err := pipe.Exec()
+	if err != nil {
+		log.Print("Something went wrong with writing data to tile38.")
+		log.Print(err)
 	}
 }

@@ -35,6 +35,7 @@ func importLoop(feeds []feed.Feed, dataProcessor process.DataProcessor) {
 		if time.Since(lastTimeUpdateFeedConfig) >= time.Minute*1 {
 			lastTimeUpdateFeedConfig = time.Now()
 			feeds = loadFeeds(feeds, dataProcessor)
+			*dataProcessor.NumberOfFeedsActive = len(feeds)
 		}
 
 		startImport := time.Now()
