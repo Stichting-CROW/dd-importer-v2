@@ -17,14 +17,8 @@ type OauthCredentialsMoveyou struct {
 }
 
 func (o *OauthCredentialsMoveyou) GetAccessToken() string {
-	log.Print("Check accessToken MOVEYOU")
-	log.Print(o.ExpireTime)
-	log.Print(time.Now())
-	log.Print(o.AccessToken)
 	if time.Now().After(o.ExpireTime) {
 		o.refreshToken()
-		log.Print(o.ExpireTime)
-		log.Print(o.AccessToken)
 	}
 	return o.AccessToken
 }

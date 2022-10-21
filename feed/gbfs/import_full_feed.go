@@ -31,7 +31,6 @@ func ImportFullFeed(feed *feed.Feed, dataProcessor process.DataProcessor) []feed
 		return FreeBikeStatus{}.Data.Bikes
 	}
 	vehicles := getData(feed, freeVehicleUrl)
-	log.Print("hier")
 	vehicleTypes := getVehicleTypes(feed, vehicleTypeUrl, dataProcessor)
 	setVehicleTypeOnVehicles(vehicles, vehicleTypes)
 
@@ -76,10 +75,8 @@ func setVehicleTypeOnVehicles(vehicles []feed.Bike, vehicleTypes []VehicleType) 
 func getVehicleTypes(feed *feed.Feed, url string, dataProcessor process.DataProcessor) []VehicleType {
 	dbVehicleTypes := getVehicleTypesFromDB(dataProcessor, feed.OperatorID)
 	newVehicleTypes := getVehicleTypesFromApi(feed, url)
-	log.Print(newVehicleTypes)
 	for _, newVehicleType := range newVehicleTypes {
 		if !contains(dbVehicleTypes, newVehicleType.ExternalVehicleTypeId) {
-			log.Print("insert")
 			insertedVehicleType := insertVehicleType(newVehicleType, process.InitDataProcessor())
 			dbVehicleTypes = append(dbVehicleTypes, insertedVehicleType)
 		}

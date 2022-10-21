@@ -18,14 +18,9 @@ type OauthCredentialsBolt struct {
 }
 
 func (o *OauthCredentialsBolt) GetAccessToken() string {
-	log.Print("Check accessToken BOLT")
-	log.Print(o.ExpireTime)
-	log.Print(time.Now())
-	log.Print(o.AccessToken)
 	if time.Now().After(o.ExpireTime) {
+		log.Print("Get new accesstoken Bolt.")
 		o.refreshToken()
-		log.Print(o.ExpireTime)
-		log.Print(o.AccessToken)
 	}
 	return o.AccessToken
 }

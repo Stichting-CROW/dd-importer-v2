@@ -130,6 +130,7 @@ func queryNewFeeds(dataProcessor process.DataProcessor) []feed.Feed {
 		FROM feeds
 		LEFT JOIN vehicle_type
 		ON default_vehicle_type = vehicle_type_id
+		WHERE feeds.is_active = true
 		ORDER BY feed_id
 	`
 	rows, err := dataProcessor.DB.Queryx(stmt)

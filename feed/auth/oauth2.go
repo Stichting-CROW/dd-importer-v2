@@ -49,8 +49,13 @@ func (o *OauthCredentials) refreshToken() {
 		log.Print(err)
 	}
 	defer resp.Body.Close()
+	log.Printf("Statuscode %d", resp.StatusCode)
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Print(err)
+	}
+	log.Print(string(body))
 	var result OAuthResult
 	json.Unmarshal(body, &result)
 	o.AccessToken = result.AccessToken

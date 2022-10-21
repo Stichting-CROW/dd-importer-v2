@@ -4,7 +4,6 @@ package mds
 import (
 	"deelfietsdashboard-importer/feed"
 	"encoding/json"
-	"log"
 	"strings"
 )
 
@@ -56,7 +55,6 @@ func ImportFeed(feed *feed.Feed) []feed.Bike {
 
 func getData(feed *feed.Feed) []feed.Bike {
 	res := feed.DownloadData(feed.Url)
-	log.Print(res)
 	if res == nil {
 		return nil
 	}

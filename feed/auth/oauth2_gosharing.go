@@ -17,14 +17,8 @@ type OauthCredentialsGosharing struct {
 }
 
 func (o *OauthCredentialsGosharing) GetAccessToken() string {
-	log.Print("Check accessToken")
-	log.Print(o.ExpireTime)
-	log.Print(time.Now())
-	log.Print(o.AccessToken)
 	if time.Now().After(o.ExpireTime) {
 		o.refreshToken()
-		log.Print(o.ExpireTime)
-		log.Print(o.AccessToken)
 	}
 	return o.AccessToken
 }

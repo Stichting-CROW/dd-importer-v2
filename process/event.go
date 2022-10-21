@@ -98,20 +98,15 @@ func (processor DataProcessor) firstCheckIn(event Event) Event {
 func (processor DataProcessor) checkIfTripIsMade(event Event, previousEvents []Event) Event {
 	lastEvent := previousEvents[0]
 	if lastEvent.EventType != "check_out" {
-		// log.Printf("Last Event was not a check_out that is strange behaviour.... see details %v, there is no trip made.", event)
-		// log.Printf("For now handle thas as a movement, only as the vehicle is moved this event is registered.")
 		event.EventType = "check_in_after_reboot"
 		event.Remark = "new check_in after reboot"
 		return processor.vehicleMoved(event)
 	}
 	if checkIfTripShouldBeResetted(event, lastEvent) == true {
-		//log.Print("This trip should be resetted. ", event.Bike.BikeID)
 		return processor.resetTrip(event, previousEvents)
 	}
 
 	event.RelatedTripID = lastEvent.RelatedTripID
-	//log.Printf("End tripEvent %v", event)
-	//log.Printf("Previous event %v", lastEvent)
 	event = processor.EndTrip(event)
 	event = processor.StartParkEvent(event)
 	return event

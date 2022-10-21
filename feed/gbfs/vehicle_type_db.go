@@ -42,6 +42,5 @@ func insertVehicleType(vehicleType VehicleType, processor process.DataProcessor)
 	row := processor.DB.QueryRowx(stmt, vehicleType.ExternalVehicleTypeId,
 		vehicleType.FormFactor, vehicleType.PropulsionType, vehicleType.SystemId, vehicleType.Name)
 	row.Scan(&vehicleType.VehicleTypeId)
-	log.Print(vehicleType)
 	return vehicleType
 }
