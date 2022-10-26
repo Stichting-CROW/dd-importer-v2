@@ -15,6 +15,28 @@ This app runs continuously:
 - It polls MDS/GBFS/TOMP API's
 - It stores aggregated data in the postgresql database
 
+## How to install
+
+Install go, see https://go.dev/doc/install
+
+Install redis, i.e. `sudo apt-get install redis`
+
+Install tile38, i.e. https://github.com/tidwall/tile38/releases
+
+Run:
+
+    export DEV=false
+    export DB_NAME=deelfietsdashboard
+    export DB_USER=deelfietsdashboard
+    export DB_HOST=localhost
+    export DB_PASSWORD=X
+    export REDIS_HOST=localhost:6379
+    export TILE38_HOST=localhost:9851
+
+Run:
+    
+    go run .
+
 ## Questions?
 
 Email to info@deelfietsdashboard.nl
