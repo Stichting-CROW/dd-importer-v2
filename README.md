@@ -33,9 +33,29 @@ Run:
     export REDIS_HOST=localhost:6379
     export TILE38_HOST=localhost:9851
 
+## How to run
+
+Start postgres.
+
+Start redis-server:
+
+    redis-server
+
+Start tile38-server:
+
+    ./tile38-server --appendonly no
+
 Run:
+
+    export DEV=false
+    export DB_NAME=deelfietsdashboard
+    export DB_USER=deelfietsdashboard
+    export DB_HOST=localhost
+    export DB_PASSWORD=x
+    export REDIS_HOST=localhost:6379
+    export TILE38_HOST=localhost:9851
     
-    go run .
+    /usr/local/go/bin/go run .
 
 ## Questions?
 

@@ -91,7 +91,6 @@ func setDefaultInternalVehicleType(bikes []feed.Bike, defaultType int, defaultFo
 		}
 	}
 	return bikes
-
 }
 
 // load feeds from database.
