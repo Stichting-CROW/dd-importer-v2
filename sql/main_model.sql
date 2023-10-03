@@ -178,7 +178,8 @@ CREATE TABLE vehicle_type (
     propulsion_type              VARCHAR(50),
     max_permitted_speed          SMALLINT,
     system_id                    VARCHAR(255),
-    name                         VARCHAR(255)
+    name                         VARCHAR(255),
+    icon_url                     TEXT
 );
 
 -- insert default vehicle types
