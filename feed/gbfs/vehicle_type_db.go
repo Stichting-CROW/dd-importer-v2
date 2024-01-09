@@ -1,17 +1,18 @@
 package gbfs
 
 import (
-	"deelfietsdashboard-importer/process"
 	"log"
+
+	"github.com/jmoiron/sqlx"
 )
 
-func getVehicleTypesFromDB(processor process.DataProcessor, systemId string) []VehicleType {
+func getVehicleTypesFromDB(db *sqlx.DB, systemId string) []VehicleType {
 	stmt := `SELECT vehicle_type_id, external_vehicle_type_id, form_factor,
 		propulsion_type, system_id, name
 		FROM vehicle_type
 		WHERE system_id = $1
 	`
-	rows, err := processor.DB.Queryx(stmt, systemId)
+	rows, err := db.Queryx(stmt, systemId)
 	if err != nil {
 		log.Print(err)
 	}
@@ -32,14 +33,14 @@ func getVehicleTypesFromDB(processor process.DataProcessor, systemId string) []V
 	return vehicleTypes
 }
 
-func insertVehicleType(vehicleType VehicleType, processor process.DataProcessor) VehicleType {
+func insertVehicleType(vehicleType VehicleType, db *sqlx.DB) VehicleType {
 	stmt := `INSERT INTO vehicle_type
 		(external_vehicle_type_id, form_factor,
 			propulsion_type, system_id, name)
 		VALUES ($1, $2, $3, $4, $5)
 		returning vehicle_type_id
 	`
-	row := processor.DB.QueryRowx(stmt, vehicleType.ExternalVehicleTypeId,
+	row := db.QueryRowx(stmt, vehicleType.ExternalVehicleTypeId,
 		vehicleType.FormFactor, vehicleType.PropulsionType, vehicleType.SystemId, vehicleType.Name)
 	row.Scan(&vehicleType.VehicleTypeId)
 	return vehicleType

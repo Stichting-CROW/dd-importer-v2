@@ -2,19 +2,36 @@ package gbfs
 
 import (
 	"deelfietsdashboard-importer/feed"
-	"deelfietsdashboard-importer/process"
 	"encoding/json"
 	"log"
+
+	"github.com/jmoiron/sqlx"
 )
 
-func ImportFullFeed(feed *feed.Feed, dataProcessor process.DataProcessor) []feed.Bike {
+func importFullFeed(feed *feed.Feed) GBFSOverview {
 	res := feed.DownloadData(feed.Url)
 	if res == nil {
-		return nil
+		return GBFSOverview{}
 	}
 	decoder := json.NewDecoder(res.Body)
 	var gbfsFeed GBFSOverview
 	decoder.Decode(&gbfsFeed)
+	return gbfsFeed
+}
+
+func importFullFeedV3(feed *feed.Feed) GBFSOverviewV3 {
+	res := feed.DownloadData(feed.Url)
+	if res == nil {
+		return GBFSOverviewV3{}
+	}
+	decoder := json.NewDecoder(res.Body)
+	var gbfsFeed GBFSOverviewV3
+	decoder.Decode(&gbfsFeed)
+	return gbfsFeed
+}
+
+func ImportFullFeedVehicles(db *sqlx.DB, feed *feed.Feed) []feed.Bike {
+	gbfsFeed := importFullFeed(feed)
 
 	var freeVehicleUrl string
 	var vehicleTypeUrl string
@@ -31,10 +48,26 @@ func ImportFullFeed(feed *feed.Feed, dataProcessor process.DataProcessor) []feed
 		return FreeBikeStatus{}.Data.Bikes
 	}
 	vehicles := getData(feed, freeVehicleUrl)
-	vehicleTypes := getVehicleTypes(feed, vehicleTypeUrl, dataProcessor)
+	vehicleTypes := getVehicleTypes(feed, vehicleTypeUrl, db)
 	setVehicleTypeOnVehicles(vehicles, vehicleTypes)
 
 	return vehicles
+}
+
+func ImportFullGeofenceV3(dataFeed feed.Feed) GBFSGeofencing {
+	gbfsFeed := importFullFeedV3(&dataFeed)
+
+	var geofenceUrl string
+	for _, feed := range gbfsFeed.Data.Feeds {
+		if feed.Name == "geofencing_zones" {
+			geofenceUrl = feed.URL
+		}
+	}
+	if geofenceUrl == "" {
+		log.Printf("[%s] geofenceUrl is not filled. Status code: %s", dataFeed.OperatorID, dataFeed.Url)
+		return GBFSGeofencing{}
+	}
+	return ImportGeofence(dataFeed, geofenceUrl)
 }
 
 type GBFSOverview struct {
@@ -48,6 +81,18 @@ type GBFSOverview struct {
 				URL  string `json:"url"`
 			} `json:"feeds"`
 		} `json:"en"`
+	} `json:"data"`
+}
+
+type GBFSOverviewV3 struct {
+	LastUpdated int    `json:"last_updated"`
+	TTL         int    `json:"ttl"`
+	Version     string `json:"version"`
+	Data        struct {
+		Feeds []struct {
+			Name string `json:"name"`
+			URL  string `json:"url"`
+		} `json:"feeds"`
 	} `json:"data"`
 }
 
@@ -72,12 +117,12 @@ func setVehicleTypeOnVehicles(vehicles []feed.Bike, vehicleTypes []VehicleType) 
 
 }
 
-func getVehicleTypes(feed *feed.Feed, url string, dataProcessor process.DataProcessor) []VehicleType {
-	dbVehicleTypes := getVehicleTypesFromDB(dataProcessor, feed.OperatorID)
+func getVehicleTypes(feed *feed.Feed, url string, db *sqlx.DB) []VehicleType {
+	dbVehicleTypes := getVehicleTypesFromDB(db, feed.OperatorID)
 	newVehicleTypes := getVehicleTypesFromApi(feed, url)
 	for _, newVehicleType := range newVehicleTypes {
 		if !contains(dbVehicleTypes, newVehicleType.ExternalVehicleTypeId) {
-			insertedVehicleType := insertVehicleType(newVehicleType, process.InitDataProcessor())
+			insertedVehicleType := insertVehicleType(newVehicleType, db)
 			dbVehicleTypes = append(dbVehicleTypes, insertedVehicleType)
 		}
 	}

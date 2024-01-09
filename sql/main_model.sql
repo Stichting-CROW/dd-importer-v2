@@ -145,7 +145,9 @@ CREATE TABLE feeds (
      last_time_updated       TIMESTAMP,
      request_headers         JSON,
      default_vehicle_type    INT,
-     is_active 				 BOOLEAN
+     is_active               BOOLEAN DEFAULT TRUE,
+     import_vehicles         BOOLEAN DEFAULT TRUE,
+     import_service_area     BOOLEAN DEFAULT FALSE
 );
 
 -- Migratie:
@@ -220,3 +222,17 @@ CREATE TABLE active_user_stats (
 CREATE INDEX active_on_user_stats
     ON active_user_stats (active_on);
 
+CREATE TABLE service_area_operator (
+
+);
+
+
+CREATE TABLE service_area (
+    id SERIAL PRIMARY KEY,
+    geom GEOMETRY UNIQUE,
+    municipalities TEXT[]
+);
+
+CREATE INDEX service_area_index
+  ON service_area
+  USING GIST (geom);

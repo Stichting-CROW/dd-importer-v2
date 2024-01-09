@@ -32,15 +32,10 @@ var numberOfFeedsActive int
 
 // InitDataProcessor sets up all dataprocessing.
 func InitDataProcessor() DataProcessor {
-	connStr := ""
-	if os.Getenv("DEV") == "true" {
-		connStr = "dbname=deelfietsdashboard sslmode=disable"
-	} else {
-		connStr = fmt.Sprintf("dbname=%s user=%s host=%s password=%s sslmode=disable",
-			os.Getenv("DB_NAME"), os.Getenv("DB_USER"), os.Getenv("DB_HOST"), os.Getenv("DB_PASSWORD"))
-	}
+	connStr := fmt.Sprintf("dbname=%s user=%s host=%s password=%s sslmode=disable",
+		os.Getenv("PGDATABASE"), os.Getenv("PGUSER"), os.Getenv("PGHOST"), os.Getenv("PGPASSWORD"))
 
-	db, err := sqlx.Connect("postgres", connStr)
+	db, err := sqlx.Connect("postgres", connStr+" binary_parameters=yes")
 	if err != nil {
 		log.Fatal(err)
 	}
