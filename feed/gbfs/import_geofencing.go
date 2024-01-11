@@ -23,6 +23,9 @@ type GBFSGeofencing struct {
 func ImportGeofence(feed feed.Feed, url string) GBFSGeofencing {
 	res := feed.DownloadData(url)
 
+	if res == nil {
+		return GBFSGeofencing{}
+	}
 	var geofencingGBFS GBFSGeofencing
 	json.NewDecoder(res.Body).Decode(&geofencingGBFS)
 	geofencingGBFS.OperatorID = feed.OperatorID

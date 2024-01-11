@@ -14,12 +14,10 @@ import (
 func (dataProcessor DataProcessor) ProcessGeofences(data []gbfs.GBFSGeofencing) {
 	geofencesPerOperator := map[string][]gbfs.GBFSGeofencing{}
 	for _, feed := range data {
-		log.Print("test")
 		geofencesPerOperator[feed.OperatorID] = append(geofencesPerOperator[feed.OperatorID], feed)
 	}
 
 	for operatorID, feeds := range geofencesPerOperator {
-		log.Print(operatorID)
 		dataProcessor.processGeofencesPerOperator(operatorID, feeds)
 	}
 }
@@ -40,11 +38,11 @@ func (dataProcessor DataProcessor) processGeofence(feed gbfs.GBFSGeofencing) {
 		}
 
 		q := dataProcessor.DB.QueryRow(
-			`SELECT id
+			`SELECT geom_hash
 			FROM service_area
-			WHERE geom = (ST_SetSRID(ST_GeomFromWKB($1), 4326));`,
+			WHERE geom_hash = ENCODE(DIGEST($1::bytea, 'sha1'), 'hex')`,
 			&obj)
-		var test int
+		var test string
 		err := q.Scan(&test)
 		if err == sql.ErrNoRows {
 			dataProcessor.insertGeofence(obj, feed.OperatorID)
@@ -60,7 +58,7 @@ func (dataProcessor DataProcessor) insertGeofence(geometry wkb.Geom, operatorID 
 		`SELECT municipality
 		FROM zones 
 		WHERE zone_type = 'municipality'
-		AND ST_intersects(st_SetSRID(ST_GeomFromWKB($1),4326), area);`,
+		AND ST_intersects(ST_MakeValid(st_SetSRID(ST_GeomFromWKB($1::bytea),4326)), area);`,
 		&geometry)
 	if err != nil {
 		log.Print(err)
@@ -73,9 +71,10 @@ func (dataProcessor DataProcessor) insertGeofence(geometry wkb.Geom, operatorID 
 	}
 
 	_, err = dataProcessor.DB.Exec(
-		`INSERT INTO service_area (geom, municipalities)
-		VALUES (ST_SetSRID(ST_GeomFromWKB($1), 4326), $2)
-		RETURNING id;`,
-		&geometry, pq.Array(municipalities))
+		`INSERT INTO service_area (geom_hash, geom, municipalities)
+		VALUES (ENCODE(DIGEST($1::bytea, 'sha1'), 'hex'),
+			ST_MakeValid(ST_SetSRID(ST_GeomFromWKB($2::bytea), 4326)), $3)
+		returning geom_hash`,
+		&geometry, &geometry, pq.Array(municipalities))
 	log.Print(err)
 }

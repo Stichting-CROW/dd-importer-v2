@@ -226,10 +226,11 @@ CREATE TABLE service_area_operator (
 
 );
 
+CREATE EXTENSION pgcrypto; 
 
 CREATE TABLE service_area (
-    id SERIAL PRIMARY KEY,
-    geom GEOMETRY UNIQUE,
+    geom_hash VARCHAR PRIMARY KEY,
+    geom GEOMETRY,
     municipalities TEXT[]
 );
 

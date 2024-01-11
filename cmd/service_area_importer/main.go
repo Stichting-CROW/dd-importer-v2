@@ -11,7 +11,6 @@ func main() {
 	dataProcessor := process.InitDataProcessor()
 	feeds := process.LoadGeofencingFeeds(dataProcessor)
 	data := downloadFeeds(feeds)
-	log.Print(data)
 	dataProcessor.ProcessGeofences(data)
 }
 
