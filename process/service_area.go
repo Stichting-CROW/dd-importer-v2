@@ -1,6 +1,7 @@
 package process
 
 import (
+	"context"
 	"database/sql"
 	"deelfietsdashboard-importer/feed/gbfs"
 	"log"
@@ -22,13 +23,57 @@ func (dataProcessor DataProcessor) ProcessGeofences(data []gbfs.GBFSGeofencing) 
 	}
 }
 
+func (dataProcessor DataProcessor) updateServiceArea(
+	municipality string,
+	operatorID string,
+	serviceAreaGeometries []string,
+) {
+	tx, _ := dataProcessor.DB.BeginTx(context.Background(), nil)
+
+	_, err := tx.Exec(
+		`UPDATE service_area
+		SET valid_until = NOW()
+		WHERE municipality = $1 AND operator = $2 and valid_until IS NULL
+		`, municipality, operatorID)
+	if err != nil {
+		log.Print(err)
+	}
+	_, err = tx.Exec(
+		`INSERT INTO service_area 
+			(municipality, operator, valid_from, service_area_geometries)
+			VALUES ($1, $2, NOW(), $3)`, municipality, operatorID, pq.Array(serviceAreaGeometries))
+	if err != nil {
+		log.Print(err)
+	}
+	err = tx.Commit()
+	if err != nil {
+		log.Print(err)
+	}
+}
+
+// Modification needed to in the future support also situations where a municipality dissapears completely.
 func (dataProcessor DataProcessor) processGeofencesPerOperator(operatorID string, feeds []gbfs.GBFSGeofencing) {
 	var geofences []Geofence
 	for _, feed := range feeds {
 		geofences = append(geofences, dataProcessor.processGeofence(feed)...)
 	}
 
-	log.Print(getGeoHashesPerMunicipality(geofences))
+	serviceAreasPerMunicipality := getServiceAreaPerMunicipality(geofences)
+	for municipality, serviceAreaGeometries := range serviceAreasPerMunicipality {
+		// is default true, because if serviceArea doesn't exists this value should be true.
+		serviceAreaIsChanged := true
+		// Check if service_areas are changed.
+		dataProcessor.DB.DB.QueryRow(
+			`SELECT NOT (service_area_geometries @> $3 AND service_area_geometries <@ $3)
+			FROM
+			service_area
+			WHERE municipality = $1 AND operator = $2 and valid_until IS NULL
+			`, municipality, operatorID, pq.Array(serviceAreaGeometries)).Scan(&serviceAreaIsChanged)
+		log.Print(serviceAreaIsChanged)
+		if serviceAreaIsChanged {
+			dataProcessor.updateServiceArea(municipality, operatorID, serviceAreaGeometries)
+		}
+	}
 }
 
 type Geofence struct {
@@ -48,7 +93,7 @@ func (dataProcessor DataProcessor) processGeofence(feed gbfs.GBFSGeofencing) []G
 
 		q := dataProcessor.DB.QueryRow(
 			`SELECT geom_hash, municipalities
-			FROM service_area
+			FROM service_area_geometry
 			WHERE geom_hash = ENCODE(DIGEST($1::bytea, 'sha1'), 'hex')`,
 			&obj)
 		var geofence Geofence
@@ -79,7 +124,7 @@ func (dataProcessor DataProcessor) insertGeofence(geometry wkb.Geom, operatorID 
 	}
 
 	res := dataProcessor.DB.QueryRow(
-		`INSERT INTO service_area (geom_hash, geom, municipalities)
+		`INSERT INTO service_area_geometry (geom_hash, geom, municipalities)
 		VALUES (ENCODE(DIGEST($1::bytea, 'sha1'), 'hex'),
 			ST_MakeValid(ST_SetSRID(ST_GeomFromWKB($2::bytea), 4326)), $3)
 		returning geom_hash`,
@@ -98,7 +143,7 @@ func (dataProcessor DataProcessor) insertGeofence(geometry wkb.Geom, operatorID 
 	}
 }
 
-func getGeoHashesPerMunicipality(geofences []Geofence) map[string][]string {
+func getServiceAreaPerMunicipality(geofences []Geofence) map[string][]string {
 	geohashPerMunicipality := map[string][]string{}
 	for _, geofence := range geofences {
 		for _, municipality := range geofence.Municipalities {
