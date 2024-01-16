@@ -8,6 +8,7 @@ import (
 )
 
 func main() {
+	log.Print("Start service_area_importer")
 	dataProcessor := process.InitDataProcessor()
 	feeds := process.LoadGeofencingFeeds(dataProcessor)
 	data := downloadFeeds(feeds)
