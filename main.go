@@ -6,7 +6,6 @@ import (
 	"deelfietsdashboard-importer/feed/mds"
 	"deelfietsdashboard-importer/feed/tomp"
 	"deelfietsdashboard-importer/process"
-	"encoding/json"
 	"log"
 	"strings"
 	"sync"
@@ -34,7 +33,7 @@ func importLoop(feeds []feed.Feed, dataProcessor process.DataProcessor) {
 	for {
 		if time.Since(lastTimeUpdateFeedConfig) >= time.Minute*1 {
 			lastTimeUpdateFeedConfig = time.Now()
-			feeds = loadFeeds(feeds, dataProcessor)
+			feeds = process.LoadFeeds(feeds, dataProcessor.DB)
 			*dataProcessor.NumberOfFeedsActive = len(feeds)
 		}
 
@@ -72,7 +71,7 @@ func importFeed(operator_feed *feed.Feed, waitGroup *sync.WaitGroup, dataProcess
 	case "mds":
 		newBikes = mds.ImportFeed(operator_feed)
 	case "full_gbfs":
-		newBikes = gbfs.ImportFullFeed(operator_feed, dataProcessor)
+		newBikes = gbfs.ImportFullFeedVehicles(dataProcessor.DB, operator_feed)
 	}
 	// keobike en gosharing gaan fout
 	if operator_feed.DefaultVehicleType != nil {
@@ -91,97 +90,6 @@ func setDefaultInternalVehicleType(bikes []feed.Bike, defaultType int, defaultFo
 		}
 	}
 	return bikes
-}
-
-// load feeds from database.
-func loadFeeds(oldFeeds []feed.Feed, dataProcessor process.DataProcessor) []feed.Feed {
-	log.Print("Sync new feeds")
-	newFeeds := queryNewFeeds(dataProcessor)
-	for index, newFeed := range newFeeds {
-		oldFeed := lookUpFeedID(oldFeeds, newFeed.ID)
-		newFeeds[index].LastImport = oldFeed.LastImport
-		newFeeds[index].NumberOfPulls = oldFeed.NumberOfPulls
-		newFeeds[index].OAuth2Credentials.AccessToken = oldFeed.OAuth2Credentials.AccessToken
-		newFeeds[index].OAuth2Credentials.ExpireTime = oldFeed.OAuth2Credentials.ExpireTime
-		newFeeds[index].OAuth2CredentialsGosharing.AccessToken = oldFeed.OAuth2CredentialsGosharing.AccessToken
-		newFeeds[index].OAuth2CredentialsGosharing.ExpireTime = oldFeed.OAuth2CredentialsGosharing.ExpireTime
-		newFeeds[index].OAuth2CredentialsBolt.AccessToken = oldFeed.OAuth2CredentialsBolt.AccessToken
-		newFeeds[index].OAuth2CredentialsBolt.ExpireTime = oldFeed.OAuth2CredentialsBolt.ExpireTime
-		newFeeds[index].OAuth2CredentialsMoveyou.AccessToken = oldFeed.OAuth2CredentialsMoveyou.AccessToken
-		newFeeds[index].OAuth2CredentialsMoveyou.ExpireTime = oldFeed.OAuth2CredentialsMoveyou.ExpireTime
-	}
-	return newFeeds
-
-}
-
-func lookUpFeedID(oldData []feed.Feed, ID int) feed.Feed {
-	for _, feed := range oldData {
-		if feed.ID == ID {
-			return feed
-		}
-	}
-	return feed.Feed{}
-}
-
-func queryNewFeeds(dataProcessor process.DataProcessor) []feed.Feed {
-	stmt := `SELECT feed_id, feeds.system_id, feed_url, 
-		feed_type, import_strategy, authentication, last_time_updated, request_headers,
-		default_vehicle_type, form_factor
-		FROM feeds
-		LEFT JOIN vehicle_type
-		ON default_vehicle_type = vehicle_type_id
-		WHERE feeds.is_active = true
-		ORDER BY feed_id
-	`
-	rows, err := dataProcessor.DB.Queryx(stmt)
-	if err != nil {
-		log.Print(err)
-	}
-
-	feeds := []feed.Feed{}
-	for rows.Next() {
-		newFeed := feed.Feed{}
-		authentication := []byte{}
-		requestHeaders := []byte{}
-		rows.Scan(&newFeed.ID, &newFeed.OperatorID,
-			&newFeed.Url, &newFeed.Type, &newFeed.ImportStrategy,
-			&authentication, &newFeed.LastTimeUpdated, &requestHeaders,
-			&newFeed.DefaultVehicleType, &newFeed.DefaultFormFactor)
-		// Tijdelijk filter voor testen.
-		newFeed = parseAuthentication(newFeed, authentication)
-		json.Unmarshal([]byte(requestHeaders), &newFeed.RequestHeaders)
-		feeds = append(feeds, newFeed)
-	}
-	log.Printf("Feeds opnieuw geïmporteerd, op dit moment zijn er %d feeds actief.", len(feeds))
-	return feeds
-}
-
-func parseAuthentication(newFeed feed.Feed, data []byte) feed.Feed {
-	var result map[string]interface{}
-	json.Unmarshal([]byte(data), &result)
-	if _, ok := result["authentication_type"]; !ok {
-		return newFeed
-	}
-	newFeed.AuthenticationType = result["authentication_type"].(string)
-	switch newFeed.AuthenticationType {
-	case "token":
-		newFeed.ApiKeyName = result["ApiKeyName"].(string)
-		newFeed.ApiKey = result["ApiKey"].(string)
-	case "oauth2":
-		newFeed.OAuth2Credentials.OauthTokenBody = result["OAuth2Credentials"].(map[string]interface{})
-		newFeed.OAuth2Credentials.TokenURL = result["TokenURL"].(string)
-	case "oauth2-gosharing":
-		newFeed.OAuth2CredentialsGosharing.OauthTokenBody = result["OAuth2Credentials"].(map[string]interface{})
-		newFeed.OAuth2CredentialsGosharing.TokenURL = result["TokenURL"].(string)
-	case "oauth2-bolt":
-		newFeed.OAuth2CredentialsBolt.OauthTokenBody = result["OAuth2Credentials"].(map[string]interface{})
-		newFeed.OAuth2CredentialsBolt.TokenURL = result["TokenURL"].(string)
-	case "oauth2-moveyou":
-		newFeed.OAuth2CredentialsMoveyou.OauthTokenBody = result["OAuth2Credentials"].(map[string]interface{})
-		newFeed.OAuth2CredentialsMoveyou.TokenURL = result["TokenURL"].(string)
-	}
-
-	return newFeed
 }
 
 // This function checkOuts all the bikes that are not in a feed anymore when the program starts running.
