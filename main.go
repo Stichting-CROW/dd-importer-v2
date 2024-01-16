@@ -71,7 +71,7 @@ func importFeed(operator_feed *feed.Feed, waitGroup *sync.WaitGroup, dataProcess
 	case "mds":
 		newBikes = mds.ImportFeed(operator_feed)
 	case "full_gbfs":
-		newBikes = gbfs.ImportFullFeed(dataProcessor.DB, operator_feed)
+		newBikes = gbfs.ImportFullFeedVehicles(dataProcessor.DB, operator_feed)
 	}
 	// keobike en gosharing gaan fout
 	if operator_feed.DefaultVehicleType != nil {
