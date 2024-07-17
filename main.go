@@ -4,6 +4,7 @@ import (
 	"deelfietsdashboard-importer/feed"
 	"deelfietsdashboard-importer/feed/gbfs"
 	"deelfietsdashboard-importer/feed/mds"
+	mdsv2 "deelfietsdashboard-importer/feed/mds-v2"
 	"deelfietsdashboard-importer/feed/tomp"
 	"deelfietsdashboard-importer/process"
 	"log"
@@ -70,6 +71,8 @@ func importFeed(operator_feed *feed.Feed, waitGroup *sync.WaitGroup, dataProcess
 		newBikes = tomp.ImportFeed(operator_feed)
 	case "mds":
 		newBikes = mds.ImportFeed(operator_feed)
+	case "mds-v2":
+		newBikes = mdsv2.ImportFeed(operator_feed)
 	case "full_gbfs":
 		newBikes = gbfs.ImportFullFeedVehicles(dataProcessor.DB, operator_feed)
 	}
