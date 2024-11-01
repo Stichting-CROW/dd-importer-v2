@@ -83,8 +83,13 @@ type Geofence struct {
 
 func (dataProcessor DataProcessor) processGeofence(feed gbfs.GBFSGeofencing) []Geofence {
 	var featureCollection geojson.FeatureCollection
-	featureCollection.UnmarshalJSON(feed.Data.GeofencingZones)
+
+	err := featureCollection.UnmarshalJSON(feed.Data.GeofencingZones)
+	if err != nil {
+		log.Print(err)
+	}
 	var geofences []Geofence
+	log.Printf("Lengte array: %d", len(featureCollection.Features))
 	for _, item := range featureCollection.Features {
 		res, _ := geom.SetSRID(item.Geometry, 4326)
 		obj := wkb.Geom{

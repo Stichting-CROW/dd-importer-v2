@@ -2,6 +2,7 @@ package process
 
 import (
 	"deelfietsdashboard-importer/feed"
+	"deelfietsdashboard-importer/feed/auth"
 	"encoding/json"
 	"log"
 
@@ -121,6 +122,15 @@ func parseAuthentication(newFeed feed.Feed, data []byte) feed.Feed {
 	case "oauth2-moveyou":
 		newFeed.OAuth2CredentialsMoveyou.OauthTokenBody = result["OAuth2Credentials"].(map[string]interface{})
 		newFeed.OAuth2CredentialsMoveyou.TokenURL = result["TokenURL"].(string)
+	case "oauth2-dott":
+		var config auth.DottAuthConfig
+
+		res, _ := json.Marshal(result["OAuth2Credentials"])
+		err := json.Unmarshal(res, &config)
+		if err != nil {
+			log.Print("Invalid config DOTT auth")
+		}
+		newFeed.OAuth2CredentialsDott.OauthTokenBody = config
 	}
 
 	return newFeed

@@ -24,6 +24,7 @@ func (feed *Feed) DownloadData(url string) *http.Response {
 		log.Print(err)
 		return nil
 	}
+
 	if res.StatusCode != http.StatusOK {
 		log.Printf("[%s] Loading data from %s not possible. Status code: %d", feed.OperatorID, url, res.StatusCode)
 		return nil
@@ -49,6 +50,9 @@ func (feed *Feed) addAuth(r *http.Request) *http.Request {
 		r.Header.Add("authorization", "Bearer "+token)
 	case "oauth2-moveyou":
 		token := feed.OAuth2CredentialsMoveyou.GetAccessToken()
+		r.Header.Add("authorization", "Bearer "+token)
+	case "oauth2-dott":
+		token := feed.OAuth2CredentialsDott.GetAccessToken()
 		r.Header.Add("authorization", "Bearer "+token)
 	}
 

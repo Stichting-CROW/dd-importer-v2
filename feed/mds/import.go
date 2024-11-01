@@ -4,6 +4,7 @@ package mds
 import (
 	"deelfietsdashboard-importer/feed"
 	"encoding/json"
+	"log"
 	"strings"
 )
 
@@ -14,6 +15,12 @@ type MdsVehiclesRespone struct {
 	} `json:"data"`
 	LastUpdated int64 `json:"last_updated"`
 	TTL         int   `json:"ttl"`
+	Links       Links `json:"links"`
+}
+
+type Links struct {
+	First string `json:"first"`
+	Next  string `json:"next"`
 }
 
 type MdsVehicle struct {
@@ -54,7 +61,15 @@ func ImportFeed(feed *feed.Feed) []feed.Bike {
 }
 
 func getData(feed *feed.Feed) []feed.Bike {
-	res := feed.DownloadData(feed.Url)
+	return getDataRecursively(feed.Url, feed, 0)
+}
+
+func getDataRecursively(url string, feed *feed.Feed, counter int) []feed.Bike {
+	if counter > 50 {
+		log.Printf("too much recursion >50, this indicates a problem %s.", url)
+	}
+
+	res := feed.DownloadData(url)
 	if res == nil {
 		return nil
 	}
@@ -62,7 +77,12 @@ func getData(feed *feed.Feed) []feed.Bike {
 	decoder := json.NewDecoder(res.Body)
 	var mdsFeed MdsVehiclesRespone
 	decoder.Decode(&mdsFeed)
-	return convertMds(mdsFeed, feed.OperatorID)
+
+	vehicles := convertMds(mdsFeed, feed.OperatorID)
+	if mdsFeed.Links.Next != "" {
+		vehicles = append(vehicles, getDataRecursively(mdsFeed.Links.Next, feed, counter+1)...)
+	}
+	return vehicles
 }
 
 func convertMds(mdsFeed MdsVehiclesRespone, systemID string) []feed.Bike {

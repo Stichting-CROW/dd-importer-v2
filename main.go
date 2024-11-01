@@ -2,6 +2,7 @@ package main
 
 import (
 	"deelfietsdashboard-importer/feed"
+	"deelfietsdashboard-importer/feed/feed_status"
 	"deelfietsdashboard-importer/feed/gbfs"
 	"deelfietsdashboard-importer/feed/mds"
 	mdsv2 "deelfietsdashboard-importer/feed/mds-v2"
@@ -32,6 +33,7 @@ func importLoop(feeds []feed.Feed, dataProcessor process.DataProcessor) {
 	lastTimeUpdateFeedConfig := time.Time{}
 	firstImport := true
 	for {
+		import_succesfull_chan := make(chan int, 1000)
 		if time.Since(lastTimeUpdateFeedConfig) >= time.Minute*1 {
 			lastTimeUpdateFeedConfig = time.Now()
 			feeds = process.LoadFeeds(feeds, dataProcessor.DB)
@@ -41,9 +43,10 @@ func importLoop(feeds []feed.Feed, dataProcessor process.DataProcessor) {
 		startImport := time.Now()
 		for index := range feeds {
 			waitGroup.Add(1)
-			go importFeed(&feeds[index], &waitGroup, dataProcessor)
+			go importFeed(&feeds[index], &waitGroup, dataProcessor, import_succesfull_chan)
 		}
 		waitGroup.Wait()
+
 		importDuration := time.Since(startImport)
 		log.Printf("All imports took %v", importDuration)
 		if firstImport {
@@ -54,6 +57,15 @@ func importLoop(feeds []feed.Feed, dataProcessor process.DataProcessor) {
 			importDuration = time.Since(startImport)
 			log.Printf("All imports including cleanup took %v", importDuration)
 		}
+
+		close(import_succesfull_chan)
+		var feeds_succesfully_imported []int
+
+		for feed_id := range import_succesfull_chan {
+			feeds_succesfully_imported = append(feeds_succesfully_imported, feed_id)
+		}
+		feed_status.UpdateLastTimeSuccesfullyImported(feeds_succesfully_imported, dataProcessor.DB)
+
 		if importDuration.Seconds() <= 30 {
 			time.Sleep(time.Second*30 - importDuration)
 		}
@@ -61,7 +73,7 @@ func importLoop(feeds []feed.Feed, dataProcessor process.DataProcessor) {
 	}
 }
 
-func importFeed(operator_feed *feed.Feed, waitGroup *sync.WaitGroup, dataProcessor process.DataProcessor) {
+func importFeed(operator_feed *feed.Feed, waitGroup *sync.WaitGroup, dataProcessor process.DataProcessor, import_succesfull chan int) {
 	defer waitGroup.Done()
 	var newBikes []feed.Bike
 	switch operator_feed.Type {
@@ -79,6 +91,10 @@ func importFeed(operator_feed *feed.Feed, waitGroup *sync.WaitGroup, dataProcess
 	// keobike en gosharing gaan fout
 	if operator_feed.DefaultVehicleType != nil {
 		newBikes = setDefaultInternalVehicleType(newBikes, *operator_feed.DefaultVehicleType, *operator_feed.DefaultFormFactor)
+	}
+
+	if len(newBikes) > 0 {
+		import_succesfull <- operator_feed.ID
 	}
 
 	log.Printf("[%s] %s import finished, %d vehicles in feed", operator_feed.OperatorID, operator_feed.Type, len(newBikes))
