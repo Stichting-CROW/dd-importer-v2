@@ -67,6 +67,7 @@ func getData(feed *feed.Feed) []feed.Bike {
 func getDataRecursively(url string, feed *feed.Feed, counter int) []feed.Bike {
 	if counter > 50 {
 		log.Printf("too much recursion >50, this indicates a problem %s.", url)
+		return nil
 	}
 
 	res := feed.DownloadData(url)

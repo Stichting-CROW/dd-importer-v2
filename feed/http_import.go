@@ -7,8 +7,13 @@ import (
 )
 
 func (feed *Feed) DownloadData(url string) *http.Response {
+	return feed.DownloadDataAllowTimeout(url, time.Second*15)
+
+}
+
+func (feed *Feed) DownloadDataAllowTimeout(url string, seconds time.Duration) *http.Response {
 	client := &http.Client{
-		Timeout: 15 * time.Second,
+		Timeout: seconds * time.Second,
 	}
 
 	req, err := http.NewRequest("GET", url, nil)

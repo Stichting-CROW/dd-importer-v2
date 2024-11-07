@@ -33,6 +33,10 @@ func LoadGeofencingFeeds(dataProcessor DataProcessor) []feed.Feed {
 	return queryGeofencingFeeds(dataProcessor)
 }
 
+func LoadTripFeeds(dataProcessor DataProcessor) []feed.Feed {
+	return queryTripFeeds(dataProcessor)
+}
+
 func lookUpFeedID(oldData []feed.Feed, ID int) feed.Feed {
 	for _, feed := range oldData {
 		if feed.ID == ID {
@@ -58,7 +62,9 @@ func queryNewFeeds(db *sqlx.DB) []feed.Feed {
 		log.Print(err)
 	}
 
-	return serializeFeeds(rows)
+	feeds := serializeFeeds(rows)
+	log.Printf("Feeds opnieuw geïmporteerd, op dit moment zijn er %d feeds actief.", len(feeds))
+	return feeds
 }
 
 func queryGeofencingFeeds(dataProcessor DataProcessor) []feed.Feed {
@@ -69,6 +75,25 @@ func queryGeofencingFeeds(dataProcessor DataProcessor) []feed.Feed {
 		LEFT JOIN vehicle_type
 		ON default_vehicle_type = vehicle_type_id
 		WHERE feeds.import_service_area = true
+		AND feeds.is_active = true
+		ORDER BY feed_id
+	`
+	rows, err := dataProcessor.DB.Queryx(stmt)
+	if err != nil {
+		log.Print(err)
+	}
+
+	return serializeFeeds(rows)
+}
+
+func queryTripFeeds(dataProcessor DataProcessor) []feed.Feed {
+	stmt := `SELECT feed_id, feeds.system_id, feed_url, 
+		feed_type, import_strategy, authentication, last_time_updated, request_headers,
+		default_vehicle_type, form_factor
+		FROM feeds
+		LEFT JOIN vehicle_type
+		ON default_vehicle_type = vehicle_type_id
+		WHERE feeds.feed_type = 'mds-trips-v2'
 		AND feeds.is_active = true
 		ORDER BY feed_id
 	`
@@ -95,7 +120,6 @@ func serializeFeeds(rows *sqlx.Rows) []feed.Feed {
 		json.Unmarshal([]byte(requestHeaders), &newFeed.RequestHeaders)
 		feeds = append(feeds, newFeed)
 	}
-	log.Printf("Feeds opnieuw geïmporteerd, op dit moment zijn er %d feeds actief.", len(feeds))
 	return feeds
 }
 
