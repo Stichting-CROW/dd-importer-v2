@@ -2,10 +2,12 @@ package auth
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -23,33 +25,36 @@ func (o *OauthCredentialsGosharing) GetAccessToken() string {
 	return o.AccessToken
 }
 
-type OAuthResultGosharing struct {
-	Data struct {
-		Mfastatus              string    `json:"mfaStatus"`
-		Accesstokenexpiredate  time.Time `json:"accessTokenExpireDate"`
-		Refreshtokenexpiredate time.Time `json:"refreshTokenExpireDate"`
-		Mfarequired            bool      `json:"mfaRequired"`
-		Accesstoken            string    `json:"accessToken"`
-		UUID                   string    `json:"uuid"`
-		Refreshtoken           string    `json:"refreshToken"`
-	} `json:"data"`
-}
-
 func (o *OauthCredentialsGosharing) refreshToken() {
 	log.Print("Refresh token gosharing")
-	jsonValue, _ := json.Marshal(o.OauthTokenBody)
 
-	resp, err := http.Post(o.TokenURL, "application/json", bytes.NewBuffer(jsonValue))
+	clientID := o.OauthTokenBody["client_id"].(string)
+	clientSecret := o.OauthTokenBody["client_secret"].(string)
+
+	// Encode clientID and clientSecret in base64
+	auth := base64.StdEncoding.EncodeToString([]byte(clientID + ":" + clientSecret))
+	params := url.Values{}
+	params.Set("grant_type", o.OauthTokenBody["grant_type"].(string))
+	request_params := bytes.NewBufferString(params.Encode())
+
+	req, _ := http.NewRequest("POST", o.TokenURL, request_params)
+	req.Header.Add("Authorization", "Basic "+auth)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		log.Print(err)
 	}
+	defer resp.Body.Close()
+	log.Printf("Statuscode %d", resp.StatusCode)
 
-	body, _ := ioutil.ReadAll(resp.Body)
-
-	var result OAuthResultGosharing
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Print(err)
+	}
+	var result OAuthResult
 	json.Unmarshal(body, &result)
-	o.AccessToken = result.Data.Accesstoken
-	expireTime := result.Data.Accesstokenexpiredate.Add(time.Duration(time.Second * -5))
-	o.ExpireTime = expireTime
-	log.Print(o)
+	o.AccessToken = result.AccessToken
+	o.ExpireTime = time.Now().Add(time.Second*time.Duration(result.ExpiresIn) - time.Second*5)
 }

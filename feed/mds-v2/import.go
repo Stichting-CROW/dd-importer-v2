@@ -98,6 +98,33 @@ func getVehicleStatus(feed *feed.Feed, u string) (MdsVehiclesStatusResponseV2, e
 	return mdsFeedStatus, nil
 }
 
+func DownloadData(f *feed.Feed) []feed.Bike {
+	u, _ := url.Parse(f.Url)
+	q := u.Query()
+	q.Set("size", strconv.Itoa(100000))
+	u.RawQuery = q.Encode()
+	vehiclesUrl := u.String()
+
+	u, _ = url.Parse(f.Url + "/status")
+	q = u.Query()
+	q.Set("size", strconv.Itoa(100000))
+	u.RawQuery = q.Encode()
+	vehiclesStatusUrl := u.String()
+
+	mdsVehicles, err := getVehicles(f, vehiclesUrl)
+	if err != nil {
+		log.Print(err)
+		return []feed.Bike{}
+	}
+	mdsVehicleStatus, err := getVehicleStatus(f, vehiclesStatusUrl)
+	if err != nil {
+		log.Print(err)
+		return []feed.Bike{}
+	}
+	return combineFeeds(mdsVehicles.Vehicles, mdsVehicleStatus.VehiclesStatus, f.OperatorID)
+
+}
+
 func DownloadDataPaginated(f *feed.Feed, limit int) []feed.Bike {
 	// This makes it possible to paralyze this call in the future
 	u := getUrl(f.Url, 0, 1)
@@ -168,8 +195,10 @@ func ImportFeed(feed *feed.Feed) []feed.Bike {
 }
 
 func getData(feed *feed.Feed) []feed.Bike {
-	// keep simple for now, in the future on with and one without pagination
-	return DownloadDataPaginated(feed, 250)
+	if feed.OperatorID == "check" {
+		return DownloadDataPaginated(feed, 250)
+	}
+	return DownloadData(feed)
 }
 
 func convertMdsToVehicle(vehicle MdsVehicleV2, vehicleStatus MdsVehicleStatus, systemID string) feed.Bike {
