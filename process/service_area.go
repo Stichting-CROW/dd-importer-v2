@@ -55,6 +55,7 @@ func (dataProcessor DataProcessor) updateServiceArea(
 func (dataProcessor DataProcessor) processGeofencesPerOperator(operatorID string, feeds []gbfs.GBFSGeofencing) {
 	var geofences []Geofence
 	for _, feed := range feeds {
+		log.Printf("Import geofences %s", feed.OperatorID)
 		geofences = append(geofences, dataProcessor.processGeofence(feed)...)
 	}
 
@@ -69,7 +70,6 @@ func (dataProcessor DataProcessor) processGeofencesPerOperator(operatorID string
 			service_area
 			WHERE municipality = $1 AND operator = $2 and valid_until IS NULL
 			`, municipality, operatorID, pq.Array(serviceAreaGeometries)).Scan(&serviceAreaIsChanged)
-		log.Print(serviceAreaIsChanged)
 		if serviceAreaIsChanged {
 			dataProcessor.updateServiceArea(municipality, operatorID, serviceAreaGeometries)
 		}
@@ -89,7 +89,7 @@ func (dataProcessor DataProcessor) processGeofence(feed gbfs.GBFSGeofencing) []G
 		log.Print(err)
 	}
 	var geofences []Geofence
-	log.Printf("Lengte array: %d", len(featureCollection.Features))
+	log.Printf("Lengte array: %d %s", len(featureCollection.Features), feed.OperatorID)
 	for _, item := range featureCollection.Features {
 		res, _ := geom.SetSRID(item.Geometry, 4326)
 		obj := wkb.Geom{
@@ -134,7 +134,6 @@ func (dataProcessor DataProcessor) insertGeofence(geometry wkb.Geom, operatorID 
 			ST_MakeValid(ST_SetSRID(ST_GeomFromWKB($2::bytea), 4326)), $3)
 		returning geom_hash`,
 		&geometry, &geometry, pq.Array(municipalities))
-	log.Print(err)
 
 	var geometryHash string
 	err = res.Scan(&geometryHash)

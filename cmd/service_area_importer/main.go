@@ -21,9 +21,12 @@ func downloadFeeds(feeds []feed.Feed) []gbfs.GBFSGeofencing {
 		switch dataFeed.Type {
 		case "manifest_gbfs":
 			loadedFeeds := gbfs.LoadFeedsFromManifest(dataFeed)
-			res = downloadFeeds(loadedFeeds)
+			res = append(res, downloadFeeds(loadedFeeds)...)
 		case "full_gbfs":
 			res = append(res, gbfs.ImportFullGeofenceV3(dataFeed))
+		case "gbfs":
+			log.Print("Start importing gbfs")
+			res = append(res, gbfs.ImportGeofence(dataFeed, dataFeed.Url))
 		default:
 			log.Printf("NOT SUPPORTED: %s", dataFeed.Type)
 		}
