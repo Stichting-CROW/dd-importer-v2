@@ -136,6 +136,8 @@ func convertVehicleType(vehicleType string, propulsionTypes []string) *int {
 		"bicycle:electric_assist":       4,
 		"cargo_bicycle:electric_assist": 2,
 		"moped:electric":                1,
+		"car:electric":                  20,
+		"car:combustion":                21,
 	}
 	result, ok := defaultVehicleType[vehicleTypePropulsionType]
 	if !ok {

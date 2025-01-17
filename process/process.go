@@ -22,7 +22,7 @@ type Result struct {
 type DataProcessor struct {
 	EventChan           chan []Event
 	VehicleChan         chan []feed.Bike
-	rdb                 *redis.Client
+	Rdb                 *redis.Client
 	DB                  *sqlx.DB
 	tile38              *redis.Client
 	NumberOfFeedsActive *int
@@ -52,7 +52,7 @@ func InitDataProcessor() DataProcessor {
 
 	numberOfFeedsActive = 0
 	return DataProcessor{
-		rdb: redis.NewClient(&redis.Options{
+		Rdb: redis.NewClient(&redis.Options{
 			Addr:     redisAddress,
 			Password: "", // no password set
 			DB:       0,  // use default DB

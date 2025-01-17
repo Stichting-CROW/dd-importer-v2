@@ -60,12 +60,12 @@ func (processor DataProcessor) ProcessEvent(event Event) {
 		return
 	}
 	bEvent, err := msgpack.Marshal(&event)
-	_, err = processor.rdb.LPush(event.getKey(), bEvent).Result()
+	_, err = processor.Rdb.LPush(event.getKey(), bEvent).Result()
 	if err != nil {
 		log.Print(err)
 	}
 	// clean data, this must be improved for temporary keys
-	_, err = processor.rdb.LTrim(event.getKey(), 0, 99).Result()
+	_, err = processor.Rdb.LTrim(event.getKey(), 0, 99).Result()
 	if err != nil {
 		log.Print(err)
 	}
@@ -164,7 +164,7 @@ func (processor DataProcessor) vehicleMoved(event Event) Event {
 
 // This function gets the last registered events from the database.
 func (processor DataProcessor) getLastEvents(bikeID string) []Event {
-	results, err := processor.rdb.LRange(bikeID, 0, 4).Result()
+	results, err := processor.Rdb.LRange(bikeID, 0, 4).Result()
 	if err != nil {
 		log.Printf("Error in receiving latest events of bike_id %v", err)
 	}

@@ -9,6 +9,7 @@ import (
 	"deelfietsdashboard-importer/feed/tomp"
 	"deelfietsdashboard-importer/process"
 	"log"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -34,6 +35,9 @@ func importLoop(feeds []feed.Feed, dataProcessor process.DataProcessor) {
 	firstImport := true
 	for {
 		import_succesfull_chan := make(chan int, 1000)
+
+		// This can be improved in the future in case we also store all is_disabled and is_reserved states in the database.
+		all_vehicles := make(chan []feed.Bike, 1000)
 		if time.Since(lastTimeUpdateFeedConfig) >= time.Minute*1 {
 			lastTimeUpdateFeedConfig = time.Now()
 			feeds = process.LoadFeeds(feeds, dataProcessor.DB)
@@ -43,12 +47,13 @@ func importLoop(feeds []feed.Feed, dataProcessor process.DataProcessor) {
 		startImport := time.Now()
 		for index := range feeds {
 			waitGroup.Add(1)
-			go importFeed(&feeds[index], &waitGroup, dataProcessor, import_succesfull_chan)
+			go importFeed(&feeds[index], &waitGroup, dataProcessor, import_succesfull_chan, all_vehicles)
 		}
 		waitGroup.Wait()
 
 		importDuration := time.Since(startImport)
 		log.Printf("All imports took %v", importDuration)
+
 		if firstImport {
 			firstImport = false
 			log.Print("This is the first import run cleanup:")
@@ -66,6 +71,12 @@ func importLoop(feeds []feed.Feed, dataProcessor process.DataProcessor) {
 		}
 		feed_status.UpdateLastTimeSuccesfullyImported(feeds_succesfully_imported, dataProcessor.DB)
 
+		close(all_vehicles)
+		// Only cache data when this salt is set.
+		if os.Getenv("AVAILABLE_VEHICLES_ID_SALT") != "" {
+			cacheAvailableVehicles(dataProcessor, all_vehicles)
+		}
+
 		if importDuration.Seconds() <= 30 {
 			time.Sleep(time.Second*30 - importDuration)
 		}
@@ -73,7 +84,7 @@ func importLoop(feeds []feed.Feed, dataProcessor process.DataProcessor) {
 	}
 }
 
-func importFeed(operator_feed *feed.Feed, waitGroup *sync.WaitGroup, dataProcessor process.DataProcessor, import_succesfull chan int) {
+func importFeed(operator_feed *feed.Feed, waitGroup *sync.WaitGroup, dataProcessor process.DataProcessor, import_succesfull chan int, vehicles chan []feed.Bike) {
 	defer waitGroup.Done()
 	var newBikes []feed.Bike
 	switch operator_feed.Type {
@@ -88,13 +99,17 @@ func importFeed(operator_feed *feed.Feed, waitGroup *sync.WaitGroup, dataProcess
 	case "full_gbfs":
 		newBikes = gbfs.ImportFullFeedVehicles(dataProcessor.DB, operator_feed)
 	}
+
 	// keobike en gosharing gaan fout
 	if operator_feed.DefaultVehicleType != nil {
+		log.Printf("Overrule default vehicle type %s %d", operator_feed.OperatorID, *operator_feed.DefaultVehicleType)
+
 		newBikes = setDefaultInternalVehicleType(newBikes, *operator_feed.DefaultVehicleType, *operator_feed.DefaultFormFactor)
 	}
 
 	if len(newBikes) > 0 {
 		import_succesfull <- operator_feed.ID
+		vehicles <- newBikes
 	}
 
 	log.Printf("[%s] %s import finished, %d vehicles in feed", operator_feed.OperatorID, operator_feed.Type, len(newBikes))
@@ -103,6 +118,7 @@ func importFeed(operator_feed *feed.Feed, waitGroup *sync.WaitGroup, dataProcess
 
 func setDefaultInternalVehicleType(bikes []feed.Bike, defaultType int, defaultFormFactor string) []feed.Bike {
 	for index := range bikes {
+		log.Printf("%+v", bikes[index])
 		if bikes[index].InternalVehicleID == nil {
 			bikes[index].InternalVehicleID = &defaultType
 			bikes[index].VehicleType = defaultFormFactor

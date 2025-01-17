@@ -48,7 +48,7 @@ func lookUpFeedID(oldData []feed.Feed, ID int) feed.Feed {
 
 func queryNewFeeds(db *sqlx.DB) []feed.Feed {
 	stmt := `SELECT feed_id, feeds.system_id, feed_url, 
-		feed_type, import_strategy, authentication, last_time_updated, request_headers,
+		feed_type, import_strategy, authentication, request_headers,
 		default_vehicle_type, form_factor
 		FROM feeds
 		LEFT JOIN vehicle_type
@@ -69,7 +69,7 @@ func queryNewFeeds(db *sqlx.DB) []feed.Feed {
 
 func queryGeofencingFeeds(dataProcessor DataProcessor) []feed.Feed {
 	stmt := `SELECT feed_id, feeds.system_id, feed_url, 
-		feed_type, import_strategy, authentication, last_time_updated, request_headers,
+		feed_type, import_strategy, authentication, request_headers,
 		default_vehicle_type, form_factor
 		FROM feeds
 		LEFT JOIN vehicle_type
@@ -88,7 +88,7 @@ func queryGeofencingFeeds(dataProcessor DataProcessor) []feed.Feed {
 
 func queryTripFeeds(dataProcessor DataProcessor) []feed.Feed {
 	stmt := `SELECT feed_id, feeds.system_id, feed_url, 
-		feed_type, import_strategy, authentication, last_time_updated, request_headers,
+		feed_type, import_strategy, authentication, request_headers,
 		default_vehicle_type, form_factor
 		FROM feeds
 		LEFT JOIN vehicle_type
@@ -111,13 +111,17 @@ func serializeFeeds(rows *sqlx.Rows) []feed.Feed {
 		newFeed := feed.Feed{}
 		authentication := []byte{}
 		requestHeaders := []byte{}
-		rows.Scan(&newFeed.ID, &newFeed.OperatorID,
+		err := rows.Scan(&newFeed.ID, &newFeed.OperatorID,
 			&newFeed.Url, &newFeed.Type, &newFeed.ImportStrategy,
-			&authentication, &newFeed.LastTimeUpdated, &requestHeaders,
+			&authentication, &requestHeaders,
 			&newFeed.DefaultVehicleType, &newFeed.DefaultFormFactor)
+		if err != nil {
+			log.Print(err)
+		}
 		// Tijdelijk filter voor testen.
 		newFeed = parseAuthentication(newFeed, authentication)
 		json.Unmarshal([]byte(requestHeaders), &newFeed.RequestHeaders)
+		log.Printf("%+v", newFeed)
 		feeds = append(feeds, newFeed)
 	}
 	return feeds
