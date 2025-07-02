@@ -81,6 +81,7 @@ CREATE TABLE geographies (
 	published_date timestamptz NOT NULL,
 	retire_date timestamptz,
 	prev_geographies UUID ARRAY,
+    affected_modalities VARCHAR(255) ARRAY,
 	publish BOOLEAN NOT NULL,
     PRIMARY KEY (geography_id)
 );
@@ -260,3 +261,24 @@ CREATE TABLE service_area_geometry (
 -- CREATE INDEX service_area_geometry_index
 --   ON service_area_geometry
 --   USING GIST (geom);
+
+CREATE TABLE operators (
+    system_id VARCHAR(255) PRIMARY KEY,
+    name TEXT NOT NULL,
+    color CHAR(7) NOT NULL CHECK (color ~ '^#[0-9A-Fa-f]{6}$'),
+    operator_url TEXT,
+    logo_url TEXT
+);
+
+CREATE TABLE vehicle_caps (
+    vehicle_cap_id SERIAL PRIMARY KEY,
+    municipality_code VARCHAR(255) NOT NULL,
+    system_id VARCHAR(255) NOT NULL,
+    effective_date DATE NOT NULL,
+    number_of_human_bicycle_allowed INT NOT NULL,
+    number_of_electric_bicycles_allowed INT NOT NULL,
+    number_of_mopeds_allowed INT NOT NULL,
+    number_of_cargo_bicycles_allowed INT NOT NULL,
+    number_of_cars_allowed INT NOT NULL,
+    UNIQUE (municipality_code, system_id, effective_date)
+);
