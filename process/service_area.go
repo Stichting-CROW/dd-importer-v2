@@ -86,7 +86,7 @@ func (dataProcessor DataProcessor) processGeofence(feed gbfs.GBFSGeofencing) []G
 	var featureCollection geojson.FeatureCollection
 
 	err := featureCollection.UnmarshalJSON(feed.Data.GeofencingZones)
-	if err.Error() == "geom: stride mismatch, got 3, want 2" {
+	if err != nil && err.Error() == "geom: stride mismatch, got 3, want 2" {
 		log.Printf("Removing third coordinate from GeoJSON for feed %s", feed.OperatorID)
 		fixedGeoJSON, err := geoutil.RemoveThirdCoordinate(feed.Data.GeofencingZones)
 		if err != nil {

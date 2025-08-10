@@ -158,7 +158,6 @@ func cleanup(feeds []feed.Feed, dataProcessor process.DataProcessor) []process.E
 			event.Timestamp = time.Now()
 			events = append(events, event)
 		}
-
 	}
 
 	return events

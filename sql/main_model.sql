@@ -270,15 +270,40 @@ CREATE TABLE operators (
     logo_url TEXT
 );
 
-CREATE TABLE vehicle_caps (
-    vehicle_cap_id SERIAL PRIMARY KEY,
-    municipality_code VARCHAR(255) NOT NULL,
+CREATE TABLE permit_limit (
+    permit_limit_id SERIAL PRIMARY KEY,
+    municipality VARCHAR(255) NOT NULL,
     system_id VARCHAR(255) NOT NULL,
+    modality VARCHAR(255) NOT NULL,
     effective_date DATE NOT NULL,
-    number_of_human_bicycle_allowed INT NOT NULL,
-    number_of_electric_bicycles_allowed INT NOT NULL,
-    number_of_mopeds_allowed INT NOT NULL,
-    number_of_cargo_bicycles_allowed INT NOT NULL,
-    number_of_cars_allowed INT NOT NULL,
-    UNIQUE (municipality_code, system_id, effective_date)
+    minimum_vehicles INT, 
+    maximum_vehicles INT, 
+    minimal_number_of_trips_per_vehicle NUMERIC, 
+    max_parking_duration INTERVAL,
+    UNIQUE (municipality, system_id, modality, effective_date)
 );
+
+CREATE OR REPLACE FUNCTION interval_to_iso8601(iv INTERVAL)
+RETURNS TEXT AS $$
+DECLARE
+  y INT := EXTRACT(YEAR FROM justify_interval(iv));
+  m INT := EXTRACT(MONTH FROM justify_interval(iv));
+  d INT := EXTRACT(DAY FROM justify_interval(iv));
+  h INT := EXTRACT(HOUR FROM justify_interval(iv));
+  mi INT := EXTRACT(MINUTE FROM justify_interval(iv));
+  s INT := EXTRACT(SECOND FROM justify_interval(iv));
+  result TEXT := 'P';
+BEGIN
+  IF y != 0 THEN result := result || y || 'Y'; END IF;
+  IF m != 0 THEN result := result || m || 'M'; END IF;
+  IF d != 0 THEN result := result || d || 'D'; END IF;
+  IF h != 0 OR mi != 0 OR s != 0 THEN
+    result := result || 'T';
+    IF h != 0 THEN result := result || h || 'H'; END IF;
+    IF mi != 0 THEN result := result || mi || 'M'; END IF;
+    IF s != 0 THEN result := result || s || 'S'; END IF;
+  END IF;
+  IF result = 'P' THEN RETURN 'PT0S'; END IF;
+  RETURN result;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
