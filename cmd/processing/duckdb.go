@@ -2,7 +2,9 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
+	"time"
 
 	_ "github.com/marcboeker/go-duckdb/v2"
 )
@@ -139,6 +141,27 @@ func loadAllParkEventData(db *sql.DB) {
 		FROM park_events;'
 	);
 	`
+	_, err := db.Exec(stmt)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func loadParkEventOnDate(db *sql.DB, date time.Time) {
+	stmt := `
+	CREATE TABLE IF NOT EXISTS park_events AS
+	SELECT park_event_id, ST_GeomFromWKB(location) AS location
+	FROM postgres_query('postgres_db', 
+		'SELECT park_event_id, ST_AsBinary(location) AS location, start_time, end_time, 
+		CONCAT(form_factor, '':'', propulsion_type) AS vehicle_type
+		FROM park_events
+		JOIN vehicle_type
+		USING(vehicle_type_id)
+		WHERE start_time >= ''%s''::date AND start_time < ''%s''::date + INTERVAL ''1 day'';'
+	);
+	`
+	stmt = fmt.Sprintf(stmt, date.Format("2006-01-02"), date.Format("2006-01-02"))
+
 	_, err := db.Exec(stmt)
 	if err != nil {
 		log.Fatal(err)

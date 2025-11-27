@@ -1,6 +1,9 @@
 package main
 
 import (
+	"database/sql"
+	"time"
+
 	"github.com/peterstace/simplefeatures/geom"
 	"github.com/peterstace/simplefeatures/rtree"
 )
@@ -8,8 +11,18 @@ import (
 func main() {
 	// dbURL := os.Getenv("DB_URL")
 	dConn := initDuckDB()
+	analyzeYesterday(dConn)
+}
+
+func analyzeMissingData(dConn *sql.DB) {
 	loadZones(dConn)
 	loadAllParkEventData(dConn)
+	findAllIntersections(dConn)
+}
+
+func analyzeYesterday(dConn *sql.DB) {
+	loadZones(dConn)
+	loadParkEventOnDate(dConn, time.Date(2025, time.October, 11, 0, 0, 0, 0, time.UTC))
 	findAllIntersections(dConn)
 }
 
