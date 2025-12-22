@@ -115,14 +115,20 @@ func (dataProcessor DataProcessor) processGeofence(feed gbfs.GBFSGeofencing) []G
 		var geofence Geofence
 		err := q.Scan(&geofence.GeometryHash, pq.Array(&geofence.Municipalities))
 		if err == sql.ErrNoRows {
+			log.Print("Inserting new geofence for operator " + feed.OperatorID)
 			geofence = dataProcessor.insertGeofence(obj, feed.OperatorID)
 		}
-		geofences = append(geofences, geofence)
+
+		// Only add geofence if it has a geometry hash (was inserted correctly and has municipalities)
+		if geofence.GeometryHash != "" {
+			geofences = append(geofences, geofence)
+		}
 	}
 	return geofences
 }
 
 func (dataProcessor DataProcessor) insertGeofence(geometry wkb.Geom, operatorID string) Geofence {
+	log.Print("Inserting new geofence for operator " + operatorID)
 	result, err := dataProcessor.DB.Query(
 		`SELECT municipality
 		FROM zones 
@@ -137,6 +143,12 @@ func (dataProcessor DataProcessor) insertGeofence(geometry wkb.Geom, operatorID 
 		var gmcode string
 		result.Scan(&gmcode)
 		municipalities = append(municipalities, gmcode)
+		log.Print(municipalities)
+	}
+
+	// If no municipalities found, do not insert geofence.
+	if len(municipalities) == 0 {
+		return Geofence{}
 	}
 
 	res := dataProcessor.DB.QueryRow(

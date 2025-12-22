@@ -54,8 +54,8 @@ func InitDataProcessor() DataProcessor {
 	return DataProcessor{
 		Rdb: redis.NewClient(&redis.Options{
 			Addr:     redisAddress,
-			Password: "", // no password set
-			DB:       0,  // use default DB
+			Password: os.Getenv("REDIS_PASSWORD"), // no password set
+			DB:       0,                           // use default DB
 		}),
 		EventChan:   make(chan []Event, 100),
 		VehicleChan: make(chan []feed.Bike, 100),

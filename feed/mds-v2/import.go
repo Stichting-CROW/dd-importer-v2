@@ -181,6 +181,7 @@ func combineFeeds(vehicles []MdsVehicleV2, vehicleStatuses []MdsVehicleStatus, o
 		if vehicle, found := vehiclesLookup[vehicleStatus.DeviceID]; found {
 			res = append(res, convertMdsToVehicle(vehicle, vehicleStatus, operatorID))
 		} else {
+			log.Printf("Number of vehicles in lookup %d", len(vehiclesLookup))
 			log.Printf("vehicle with device_id %s could not be found, complete feed is now ingnored", vehicleStatus.DeviceID)
 			return []feed.Bike{}
 		}
