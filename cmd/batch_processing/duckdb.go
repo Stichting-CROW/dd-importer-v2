@@ -23,12 +23,50 @@ func initDuckDB() *sql.DB {
 	if err != nil {
 		log.Fatal(err)
 	}
-	_, err = db.Exec("PRAGMA enable_profiling = 'query_tree';")
+
+	// _, err = db.Exec("PRAGMA enable_profiling = 'query_tree';")
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	log.Print("Connect postgresql database")
+	_, err = db.Exec("ATTACH 'dbname=dashboarddeelmobiliteit user=postgres host=127.0.0.1 port=15432 password=3324a7ee8bba383effacd57ec5c680ef' AS postgres_db (TYPE postgres);")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	_, err = db.Exec("ATTACH 'dbname=dashboarddeelmobiliteit user=postgres host=127.0.0.1 password=mysecretpassword' AS postgres_db (TYPE postgres);")
+	log.Print("Creating moment_statistics table...")
+	stmt := `
+	CREATE TABLE IF NOT EXISTS moment_statistics (
+	    date 	           DATE NOT NULL,
+		measurement_moment USMALLINT NOT NULL,
+		indicator 	       UTINYINT NOT NULL,
+		geometry_ref       VARCHAR NOT NULL,
+		system_id          VARCHAR NOT NULL,
+		vehicle_type       VARCHAR NOT NULL,
+		value              NUMERIC NOT NULL,
+		PRIMARY KEY (date, measurement_moment, indicator, geometry_ref, system_id, vehicle_type)
+	);
+   `
+	_, err = db.Exec(stmt)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Print("Createing day_statistics table...")
+	stmt2 := `
+	CREATE TABLE IF NOT EXISTS day_statistics (
+		date DATE NOT NULL,
+		indicator UTINYINT NOT NULL,
+		geometry_ref VARCHAR NOT NULL,
+		system_id VARCHAR NOT NULL,
+		vehicle_type VARCHAR NOT NULL,
+		value NUMERIC NOT NULL,
+		PRIMARY KEY (date, indicator, geometry_ref, system_id, vehicle_type)
+	);
+	`
+
+	_, err = db.Exec(stmt2)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -47,11 +85,16 @@ func loadZones(db *sql.DB) {
 
 	stmt = `
 		CREATE TABLE IF NOT EXISTS zones AS
-		SELECT name, stat_ref, geography_type, ST_GeomFromWKB(buffered_area) AS buffered_area
+		SELECT name, stat_ref, zone_type, geography_type, effective_date, retire_date,
+		ST_GeomFromWKB(buffered_area) AS buffered_area, affected_modalities
 		FROM postgres_query('postgres_db', 
 			'SELECT z.name,
   			COALESCE(g.geography_id::text, z.stats_ref) AS stat_ref,
+  			z.zone_type,
   			g.geography_type,
+			g.affected_modalities,
+			g.effective_date,
+			g.retire_date,
   			CASE
     			WHEN g.geography_type = ''stop'' THEN ST_asBinary(ST_Buffer(z.area::geography, 30)::geometry)
     			WHEN g.geography_type = ''no_parking'' THEN ST_asBinary(ST_Buffer(z.area::geography, -30)::geometry)
@@ -59,8 +102,7 @@ func loadZones(db *sql.DB) {
   			END AS buffered_area
 		FROM zones z
 		LEFT JOIN geographies g USING(zone_id)
-		WHERE (retire_date IS null or retire_date > NOW())
-		AND zone_type IN (''custom'', ''residential_area'', ''municipality'');
+		WHERE zone_type IN (''custom'', ''residential_area'', ''municipality'');
 		');
 	`
 
@@ -79,59 +121,6 @@ func loadZonesBasedOnID(db *sql.DB, zonesPath string, idField string) {
 	db.Exec(stmt, idField)
 }
 
-func findAllIntersections(db *sql.DB) {
-	row := db.QueryRow(`SELECT count(*) as count
-		FROM park_events
-		JOIN zones
-		ON ST_Dwithin(location, zones.buffered_area, 0.0);`)
-	var count int
-	err := row.Scan(&count)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Println("Found intersections:", count)
-
-	rows, err := db.Query(`
-		SELECT * FROM(
-		SELECT zones.stat_ref, count(*) as count
-		FROM park_events
-		JOIN zones
-		ON ST_Dwithin(location, zones.buffered_area, 0.0)
-		GROUP BY zones.stat_ref)
-		ORDER BY count DESC
-		LIMIT 10;`)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var statRef string
-		var count int
-		if err := rows.Scan(&statRef, &count); err != nil {
-			log.Fatal(err)
-		}
-		log.Println("Found intersections for", statRef, ":", count)
-	}
-	err = rows.Err()
-	if err != nil {
-		log.Fatal(err)
-	}
-	// rows.Next()
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// defer rows.Close()
-	// for rows.Next() {
-	// 	var zoneID string
-	// 	var area []byte
-	// 	if err := rows.Scan(&zoneID, &area); err != nil {
-	// 		log.Fatal(err)
-	// 	}
-	// 	log.Println(zoneID, len(area))
-	// }
-}
-
 func loadAllParkEventData(db *sql.DB) {
 	stmt := `
 	CREATE TABLE IF NOT EXISTS park_events AS
@@ -147,22 +136,31 @@ func loadAllParkEventData(db *sql.DB) {
 	}
 }
 
-func loadParkEventOnDate(db *sql.DB, date time.Time) {
+func loadParkEventInBetween(db *sql.DB, startDate time.Time, endDate time.Time) {
 	stmt := `
+	DROP TABLE IF EXISTS park_events;
+	`
+	_, err := db.Exec(stmt)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	stmt = `
 	CREATE TABLE IF NOT EXISTS park_events AS
-	SELECT park_event_id, ST_GeomFromWKB(location) AS location
+	SELECT park_event_id, ST_GeomFromWKB(location) AS location, start_time, end_time, 
+	system_id, vehicle_type
 	FROM postgres_query('postgres_db', 
 		'SELECT park_event_id, ST_AsBinary(location) AS location, start_time, end_time, 
-		CONCAT(form_factor, '':'', propulsion_type) AS vehicle_type
+		park_events.system_id, CONCAT(form_factor, '':'', propulsion_type) AS vehicle_type
 		FROM park_events
 		JOIN vehicle_type
 		USING(vehicle_type_id)
-		WHERE start_time >= ''%s''::date AND start_time < ''%s''::date + INTERVAL ''1 day'';'
+		WHERE (end_time >= ''%s''::date or end_time IS NULL) AND start_time < ''%s''::date + INTERVAL ''1 day'';'
 	);
 	`
-	stmt = fmt.Sprintf(stmt, date.Format("2006-01-02"), date.Format("2006-01-02"))
+	stmt = fmt.Sprintf(stmt, startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
 
-	_, err := db.Exec(stmt)
+	_, err = db.Exec(stmt)
 	if err != nil {
 		log.Fatal(err)
 	}

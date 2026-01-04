@@ -12,6 +12,8 @@ require (
 	github.com/jackc/pgx/v5 v5.7.1
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.9
+	github.com/marcboeker/go-duckdb/v2 v2.4.2
+	github.com/peterstace/simplefeatures v0.54.0
 	github.com/twpayne/go-geom v1.6.1
 	github.com/vmihailenco/msgpack/v5 v5.4.1
 )
@@ -33,10 +35,8 @@ require (
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/marcboeker/go-duckdb/arrowmapping v0.0.21 // indirect
 	github.com/marcboeker/go-duckdb/mapping v0.0.21 // indirect
-	github.com/marcboeker/go-duckdb/v2 v2.4.2 // indirect
 	github.com/onsi/ginkgo v1.16.5 // indirect
 	github.com/onsi/gomega v1.18.1 // indirect
-	github.com/peterstace/simplefeatures v0.54.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect
 	github.com/tidwall/geoindex v1.7.0 // indirect
 	github.com/tidwall/rtree v1.10.0 // indirect
