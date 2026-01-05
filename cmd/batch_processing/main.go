@@ -121,7 +121,7 @@ func getNewestDateInMomentStatistics(db *pgx.Conn) time.Time {
 	var newestDate time.Time
 	log.Print("Getting newest date in moment_statistics...")
 	err := db.QueryRow(context.Background(), `
-		SELECT MAX(date) 
+		SELECT COALESCE(MAX(date), '2024-12-31'::DATE)
 		FROM moment_statistics;
 	`).Scan(&newestDate)
 	if err != nil {
