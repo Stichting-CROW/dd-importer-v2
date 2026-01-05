@@ -7,6 +7,14 @@ import (
 
 func FindIntersectionsWithZones(db *sql.DB) {
 	stmt := `
+		DROP TABLE IF EXISTS park_events_in_zone;
+	`
+	_, err := db.Exec(stmt)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	stmt2 := `
 		CREATE TABLE IF NOT EXISTS park_events_in_zone AS (
         SELECT park_event_id, location, start_time, end_time, system_id, vehicle_type, 
 		zones.stat_ref, zones.zone_type, zones.geography_type, 
@@ -19,7 +27,7 @@ func FindIntersectionsWithZones(db *sql.DB) {
            AND zm.zone_type = 'municipality'
 		);
 	`
-	_, err := db.Exec(stmt)
+	_, err = db.Exec(stmt2)
 	if err != nil {
 		log.Fatal(err)
 	}

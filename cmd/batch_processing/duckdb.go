@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	_ "github.com/marcboeker/go-duckdb/v2"
@@ -30,17 +31,19 @@ func initDuckDB() *sql.DB {
 	// }
 
 	log.Print("Connect postgresql database")
-	_, err = db.Exec("ATTACH 'dbname=dashboarddeelmobiliteit user=postgres host=127.0.0.1 port=15432 password=3324a7ee8bba383effacd57ec5c680ef' AS postgres_db (TYPE postgres);")
+	stmt := fmt.Sprintf(
+		"ATTACH '%s' AS postgres_db (TYPE postgres);", os.Getenv("PGURL"))
+	_, err = db.Exec(stmt)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	log.Print("Creating moment_statistics table...")
-	stmt := `
+	stmt = `
 	CREATE TABLE IF NOT EXISTS moment_statistics (
 	    date 	           DATE NOT NULL,
-		measurement_moment USMALLINT NOT NULL,
-		indicator 	       UTINYINT NOT NULL,
+		measurement_moment TINYINT NOT NULL,
+		indicator 	       TINYINT NOT NULL,
 		geometry_ref       VARCHAR NOT NULL,
 		system_id          VARCHAR NOT NULL,
 		vehicle_type       VARCHAR NOT NULL,
@@ -53,11 +56,11 @@ func initDuckDB() *sql.DB {
 		log.Fatal(err)
 	}
 
-	log.Print("Createing day_statistics table...")
+	log.Print("Creating day_statistics table...")
 	stmt2 := `
 	CREATE TABLE IF NOT EXISTS day_statistics (
 		date DATE NOT NULL,
-		indicator UTINYINT NOT NULL,
+		indicator TINYINT NOT NULL,
 		geometry_ref VARCHAR NOT NULL,
 		system_id VARCHAR NOT NULL,
 		vehicle_type VARCHAR NOT NULL,

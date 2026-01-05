@@ -1,50 +1,71 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"deelfietsdashboard-importer/cmd/batch_processing/analyze"
+	"fmt"
 	"log"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 func main() {
 	log.Print("Starting batch processing...")
-	// dbURL := os.Getenv("DB_URL")
+
+	pgConn := initPostgresDB()
 	dConn := initDuckDB()
 	startTime := time.Now()
 
-	// for every month in 2025
-	year := 2025
-	for m := time.January; m <= time.January; m++ {
-		startLoadingMonth := time.Now()
-		log.Printf("Loading park events for month %s", m.String())
-		lastDayOfMonth := time.Date(year, m+1, 0, 0, 0, 0, 0, time.Now().Location())
-		log.Printf("Analyzing month %s", m.String())
-		// how to get last day of month?
+	loadZones(dConn)
 
-		// load park events between first and last day of month because that is more efficient then loading a full year
-		loadParkEventInBetween(dConn, time.Date(year, m, 1, 0, 0, 0, 0, time.Now().Location()), lastDayOfMonth)
+	newestDate := getNewestDateInMomentStatistics(pgConn).Local()
+	fmt.Printf("Newest date in moment_statistics: %s\n", newestDate.Format("2006-01-02"))
+	aggregateData(dConn, newestDate.AddDate(0, 0, 1))
 
-		for d := time.Date(year, m, 1, 0, 0, 0, 0, time.Now().Location()); !d.After(lastDayOfMonth); d = d.AddDate(0, 0, 1) {
-			log.Printf("Last day of month: %s, %s", d, lastDayOfMonth)
-
-			log.Printf("Analyzing date %s", d.Format("2006-01-02"))
-			analyzeDay(dConn, d)
-		}
-		log.Printf("Done analyzing for month %s, took %s", m.String(), time.Since(startLoadingMonth))
-	}
 	analyze.AggregateVehiclesInPublicSpacePerDay(dConn)
-	analyze.AggregateWronglyParkedVehiclesPerDay(dConn, time.Date(year, time.January, 1, 0, 0, 0, 0, time.Now().Location()), time.Date(year, time.January, 31, 0, 0, 0, 0, time.Now().Location()))
+	writeToPostgres(dConn)
 	writeTmpTableToCSV(dConn)
 
 	log.Printf("Done analyzing data, took %s", time.Since(startTime))
 }
 
-func analyzeDay(dConn *sql.DB, date time.Time) {
-	loadZones(dConn)
+func aggregateData(dConn *sql.DB, startDate time.Time) {
+	const chunkSize = 30
+	yesterday := time.Now().Local().AddDate(0, 0, -1)
+
+	for start := startDate; start.Before(yesterday); {
+		end := start.AddDate(0, 0, chunkSize)
+
+		if end.After(yesterday) {
+			end = yesterday
+		}
+
+		fmt.Printf("Chunk: %s -> %s\n",
+			start.Format("2006-01-02"),
+			end.Format("2006-01-02"),
+		)
+
+		analyzeChunk(dConn, start, end)
+		start = end.AddDate(0, 0, 1)
+	}
+}
+
+func analyzeChunk(dConn *sql.DB, startDate time.Time, endDate time.Time) {
+	loadParkEventInBetween(dConn, startDate, endDate)
 	//loadParkEventOnDate(dConn, date)
 	analyze.FindIntersectionsWithZones(dConn)
 
+	for d := startDate; !d.After(endDate); d = d.AddDate(0, 0, 1) {
+		log.Printf("Analyzing date %s", d.Format("2006-01-02"))
+		analyzeDay(dConn, d)
+	}
+	analyze.CountWronglyParkedVehicles(dConn)
+	analyze.AggregateWronglyParkedVehiclesPerDay(dConn, startDate, endDate)
+}
+
+func analyzeDay(dConn *sql.DB, date time.Time) {
 	// Set measurement moment to 03:30 on the given date
 	measurementMoment := time.Date(
 		date.Year(), date.Month(), date.Day(),
@@ -55,8 +76,58 @@ func analyzeDay(dConn *sql.DB, date time.Time) {
 	analyze.CountVehiclesInPublicSpaceForLongerThenXDays(dConn, measurementMoment, 3)
 	analyze.CountVehiclesInPublicSpaceForLongerThenXDays(dConn, measurementMoment, 7)
 	analyze.CountVehiclesInPublicSpaceForLongerThenXDays(dConn, measurementMoment, 14)
-	analyze.CountWronglyParkedVehicles(dConn, date)
 	analyze.CountVehiclesInPublicSpaceOnDate(dConn, measurementMoment)
+}
+
+func writeToPostgres(db *sql.DB) {
+	log.Print("Writing results to Postgres...")
+	stmt := `
+	INSERT INTO postgres_db.moment_statistics
+	SELECT
+		date,
+		measurement_moment,
+		indicator,
+		geometry_ref,
+		system_id,
+		vehicle_type,
+		value
+	FROM moment_statistics;
+	`
+
+	_, err := db.Exec(stmt)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	stmt = `
+	INSERT INTO postgres_db.day_statistics
+	SELECT
+		date,
+		indicator,
+		geometry_ref,
+		system_id,
+		vehicle_type,
+		value
+	FROM day_statistics;
+	`
+
+	_, err = db.Exec(stmt)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func getNewestDateInMomentStatistics(db *pgx.Conn) time.Time {
+	var newestDate time.Time
+	log.Print("Getting newest date in moment_statistics...")
+	err := db.QueryRow(context.Background(), `
+		SELECT MAX(date) 
+		FROM moment_statistics;
+	`).Scan(&newestDate)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return newestDate
 }
 
 func writeTmpTableToCSV(db *sql.DB) {
