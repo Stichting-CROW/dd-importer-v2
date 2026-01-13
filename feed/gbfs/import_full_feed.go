@@ -44,7 +44,7 @@ func ImportFullFeedVehicles(db *sqlx.DB, feed *feed.Feed) []feed.Bike {
 		}
 	}
 	if freeVehicleUrl == "" || vehicleTypeUrl == "" {
-		log.Printf("[%s] freeVehicleUrl or vehicleTypeUrl is not filled. Status code: %s", feed.OperatorID, feed.Url)
+		log.Printf("[%s_%d] freeVehicleUrl or vehicleTypeUrl is not filled. Status code: %s", feed.OperatorID, feed.ID, feed.Url)
 		return FreeBikeStatus{}.Data.Bikes
 	}
 	vehicles := getData(feed, freeVehicleUrl)
@@ -64,7 +64,7 @@ func ImportFullGeofenceV3(dataFeed feed.Feed) GBFSGeofencing {
 		}
 	}
 	if geofenceUrl == "" {
-		log.Printf("[%s] geofenceUrl is not filled. Status code: %s", dataFeed.OperatorID, dataFeed.Url)
+		log.Printf("[%s_%d] geofenceUrl is not filled. Status code: %s", dataFeed.OperatorID, dataFeed.ID, dataFeed.Url)
 		return GBFSGeofencing{}
 	}
 	return ImportGeofence(dataFeed, geofenceUrl)

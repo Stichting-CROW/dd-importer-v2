@@ -112,17 +112,21 @@ func importFeed(operator_feed *feed.Feed, waitGroup *sync.WaitGroup, dataProcess
 		vehicles <- newBikes
 	}
 
-	log.Printf("[%s] %s import finished, %d vehicles in feed", operator_feed.OperatorID, operator_feed.Type, len(newBikes))
+	log.Printf("[%s_%d] %s import finished, %d vehicles in feed", operator_feed.OperatorID, operator_feed.ID, operator_feed.Type, len(newBikes))
 	operator_feed.LastImport = dataProcessor.ProcessNewData(operator_feed.ImportStrategy, operator_feed.LastImport, newBikes).CurrentBikesInFeed
 }
 
 func setDefaultInternalVehicleType(bikes []feed.Bike, defaultType int, defaultFormFactor string) []feed.Bike {
+	didOverride := 0
 	for index := range bikes {
-		log.Printf("%+v", bikes[index])
 		if bikes[index].InternalVehicleID == nil {
 			bikes[index].InternalVehicleID = &defaultType
 			bikes[index].VehicleType = defaultFormFactor
+			didOverride += 1
 		}
+	}
+	if didOverride > 0 {
+		log.Printf("Vehicle type is %d times overruled for feed of [%s]", didOverride, bikes[0].SystemID)
 	}
 	return bikes
 }
