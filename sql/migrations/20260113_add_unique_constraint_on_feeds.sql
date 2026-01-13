@@ -1,0 +1,2 @@
+ALTER TABLE feeds
+ADD PRIMARY KEY (feed_id);
