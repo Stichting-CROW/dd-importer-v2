@@ -1,6 +1,7 @@
 package process
 
 import (
+	"log"
 	"time"
 )
 
@@ -19,6 +20,17 @@ func (processor DataProcessor) StartParkEvent(checkIn Event) Event {
 
 // EndParkEvent ends a park_event in the database when a bike is removed.
 func (processor DataProcessor) EndParkEvent(checkOut Event) {
+	// way to work arround a earlier mistake.
+	if checkOut.RelatedParkEventID == 0 {
+		log.Printf("Alternative way to checkout %d %s", checkOut.RelatedParkEventID, checkOut.getKey())
+		stmt := `UPDATE park_events
+		SET end_time = $1
+		WHERE bike_id = $2
+		AND end_time is null`
+		processor.DB.MustExec(stmt, checkOut.Timestamp, checkOut.getKey())
+		return
+	}
+
 	stmt := `UPDATE park_events
 		SET end_time = $1
 		WHERE park_event_id = $2
