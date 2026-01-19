@@ -5,6 +5,7 @@ import (
 	"deelfietsdashboard-importer/feed"
 	"encoding/json"
 	"log"
+	"slices"
 	"strings"
 )
 
@@ -124,10 +125,38 @@ func convertToVehicleId(vehicleID string) string {
 	return strings.ToLower(strings.Replace(vehicleID, " ", "_", -1))
 }
 
+// There is an ordering made from important to less important
+// because in dashboarddeelmobiliteit it's only allowed to have one propulsion type
+func getPropulsionType(propulsionTypes []string) string {
+	if slices.Contains(propulsionTypes, "electric") {
+		return "electric"
+	}
+	if slices.Contains(propulsionTypes, "electric_assist") {
+		return "electric_assist"
+	}
+	if slices.Contains(propulsionTypes, "human") {
+		return "human"
+	}
+
+	// effort to simplify this
+	if slices.Contains(propulsionTypes, "combustion_diesel") {
+		return "combustion"
+	}
+	if slices.Contains(propulsionTypes, "hybrid") {
+		return "combustion"
+	}
+	if slices.Contains(propulsionTypes, "plug_in_hybrid") {
+		return "combustion"
+	}
+
+	return propulsionTypes[0]
+
+}
+
 func convertVehicleType(vehicleType string, propulsionTypes []string) *int {
 	vehicleTypePropulsionType := vehicleType
 	if len(propulsionTypes) > 0 {
-		vehicleTypePropulsionType = vehicleTypePropulsionType + ":" + propulsionTypes[0]
+		vehicleTypePropulsionType = vehicleTypePropulsionType + ":" + getPropulsionType(propulsionTypes)
 	}
 
 	// Hardcoded values from DB.

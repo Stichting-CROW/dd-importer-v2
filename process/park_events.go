@@ -13,6 +13,7 @@ func (processor DataProcessor) StartParkEvent(checkIn Event) Event {
 	`
 	row := processor.DB.QueryRowx(stmt, checkIn.Bike.SystemID, checkIn.getKey(), checkIn.Bike.Lon, checkIn.Bike.Lat, checkIn.Timestamp, checkIn.Bike.InternalVehicleID)
 	row.Scan(&checkIn.RelatedParkEventID)
+
 	return checkIn
 }
 

@@ -20,6 +20,8 @@ func CleanCompare(old map[string]feed.Bike, new []feed.Bike) Result {
 		return processResult
 	}
 
+	checkins := 0
+	checkouts := 0
 	for _, bike := range new {
 		oldBike, exists := old[bike.BikeID]
 		if !exists {
@@ -29,6 +31,7 @@ func CleanCompare(old map[string]feed.Bike, new []feed.Bike) Result {
 				Timestamp: time.Now(),
 			}
 			processResult.CreatedEvents = append(processResult.CreatedEvents, newEvent)
+			checkins += 1
 		} else if geoutil.Distance(oldBike.Lat, oldBike.Lon,
 			bike.Lat, bike.Lon) > 0.1 {
 			// This event is created when a bicycle is moved more then 0.1m
@@ -51,6 +54,10 @@ func CleanCompare(old map[string]feed.Bike, new []feed.Bike) Result {
 			Timestamp: time.Now(),
 		}
 		processResult.CreatedEvents = append(processResult.CreatedEvents, newEvent)
+		checkouts += 1
+	}
+	if checkins > 0 || checkouts > 0 {
+		log.Printf("[%s] number of checkins %d, number of checkouts %d", processResult.CreatedEvents[0].Bike.SystemID, checkins, checkouts)
 	}
 	return processResult
 }

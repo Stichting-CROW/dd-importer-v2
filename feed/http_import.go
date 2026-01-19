@@ -31,7 +31,7 @@ func (feed *Feed) DownloadDataAllowTimeout(url string, seconds time.Duration) *h
 	}
 
 	if res.StatusCode != http.StatusOK {
-		log.Printf("[%s] Loading data from %s not possible. Status code: %d", feed.OperatorID, url, res.StatusCode)
+		log.Printf("[%s_%d] Loading data from %s not possible. Status code: %d", feed.OperatorID, feed.ID, url, res.StatusCode)
 		return nil
 	}
 	return res
