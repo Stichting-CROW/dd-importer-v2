@@ -12,11 +12,8 @@ func (processor DataProcessor) StartParkEvent(checkIn Event) Event {
 		RETURNING park_event_id
 	`
 	row := processor.DB.QueryRowx(stmt, checkIn.Bike.SystemID, checkIn.getKey(), checkIn.Bike.Lon, checkIn.Bike.Lat, checkIn.Timestamp, checkIn.Bike.InternalVehicleID)
-	var relatedParkEventID int64
-	row.Scan(&relatedParkEventID)
+	row.Scan(&checkIn.RelatedParkEventID)
 
-	// enque data for further proccessing
-	processor.Rdb.LPush("updated_park_events", relatedParkEventID)
 	return checkIn
 }
 
@@ -37,7 +34,6 @@ func (processor DataProcessor) UpdateLocationParkEvent(newEvent Event, eventToUp
 
 	newEvent.RelatedParkEventID = eventToUpdate.RelatedParkEventID
 	processor.DB.MustExec(stmt, newEvent.Bike.Lon, newEvent.Bike.Lat, eventToUpdate.RelatedParkEventID)
-	processor.Rdb.LPush("updated_park_events", newEvent.RelatedParkEventID)
 	return newEvent
 }
 
