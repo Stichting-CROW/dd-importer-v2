@@ -13,7 +13,6 @@ require (
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.9
 	github.com/marcboeker/go-duckdb/v2 v2.4.2
-	github.com/peterstace/simplefeatures v0.54.0
 	github.com/twpayne/go-geom v1.6.1
 	github.com/vmihailenco/msgpack/v5 v5.4.1
 )
@@ -38,8 +37,6 @@ require (
 	github.com/onsi/ginkgo v1.16.5 // indirect
 	github.com/onsi/gomega v1.18.1 // indirect
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect
-	github.com/tidwall/geoindex v1.7.0 // indirect
-	github.com/tidwall/rtree v1.10.0 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/zeebo/xxh3 v1.0.2 // indirect
 	golang.org/x/crypto v0.27.0 // indirect

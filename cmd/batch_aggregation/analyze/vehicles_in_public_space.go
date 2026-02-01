@@ -2,7 +2,7 @@ package analyze
 
 import (
 	"database/sql"
-	"deelfietsdashboard-importer/cmd/batch_processing/util"
+	"deelfietsdashboard-importer/cmd/batch_aggregation/util"
 	"log"
 	"time"
 )

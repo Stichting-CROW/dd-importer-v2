@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
-	"deelfietsdashboard-importer/cmd/batch_processing/analyze"
+	"deelfietsdashboard-importer/cmd/batch_aggregation/analyze"
 	"fmt"
 	"log"
 	"time"
