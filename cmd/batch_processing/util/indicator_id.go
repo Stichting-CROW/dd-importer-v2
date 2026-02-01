@@ -14,6 +14,8 @@ func GetNumericIndicatorID(measurementEnum string) int {
 		return 4
 	case "count_vehicles_in_public_space_longer_then_14_days":
 		return 5
+	case "count_wrongly_parked_vehicles":
+		return 6
 	default:
 		log.Fatalf("Unknown measurement enum: %s", measurementEnum)
 		return -1

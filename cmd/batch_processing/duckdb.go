@@ -25,11 +25,6 @@ func initDuckDB() *sql.DB {
 		log.Fatal(err)
 	}
 
-	// _, err = db.Exec("PRAGMA enable_profiling = 'query_tree';")
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
 	log.Print("Connect postgresql database")
 	stmt := fmt.Sprintf(
 		"ATTACH '%s' AS postgres_db (TYPE postgres);", os.Getenv("PGURL"))

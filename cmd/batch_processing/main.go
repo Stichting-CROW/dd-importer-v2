@@ -26,7 +26,6 @@ func main() {
 
 	analyze.AggregateVehiclesInPublicSpacePerDay(dConn)
 	writeToPostgres(dConn)
-	writeTmpTableToCSV(dConn)
 
 	log.Printf("Done analyzing data, took %s", time.Since(startTime))
 }
@@ -121,7 +120,7 @@ func getNewestDateInMomentStatistics(db *pgx.Conn) time.Time {
 	var newestDate time.Time
 	log.Print("Getting newest date in moment_statistics...")
 	err := db.QueryRow(context.Background(), `
-		SELECT COALESCE(MAX(date), '2024-12-31'::DATE)
+		SELECT COALESCE(MAX(date), '2019-12-31'::DATE)
 		FROM moment_statistics;
 	`).Scan(&newestDate)
 	if err != nil {
