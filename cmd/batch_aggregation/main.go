@@ -22,17 +22,15 @@ func main() {
 
 	newestDate := getNewestDateInMomentStatistics(pgConn).Local()
 	fmt.Printf("Newest date in moment_statistics: %s\n", newestDate.Format("2006-01-02"))
-	aggregateData(dConn, newestDate.AddDate(0, 0, 1))
-
-	analyze.AggregateVehiclesInPublicSpacePerDay(dConn)
-	writeToPostgres(dConn)
+	aggregateAndStoreData(dConn, newestDate.AddDate(0, 0, 1))
 
 	log.Printf("Done analyzing data, took %s", time.Since(startTime))
 }
 
-func aggregateData(dConn *sql.DB, startDate time.Time) {
+func aggregateAndStoreData(dConn *sql.DB, startDate time.Time) {
 	const chunkSize = 30
 	yesterday := time.Now().Local().AddDate(0, 0, -1)
+	processedBatches := 0
 
 	for start := startDate; start.Before(yesterday); {
 		end := start.AddDate(0, 0, chunkSize)
@@ -48,7 +46,19 @@ func aggregateData(dConn *sql.DB, startDate time.Time) {
 
 		analyzeChunk(dConn, start, end)
 		start = end.AddDate(0, 0, 1)
+
+		processedBatches += 1
+		// Cleanup and write to Postgres every 10 batches
+		if processedBatches%5 == 0 {
+			analyze.AggregateVehiclesInPublicSpacePerDay(dConn)
+			writeToPostgres(dConn)
+			cleanupTmpTables(dConn)
+		}
+
 	}
+	analyze.AggregateVehiclesInPublicSpacePerDay(dConn)
+	writeToPostgres(dConn)
+	cleanupTmpTables(dConn)
 }
 
 func analyzeChunk(dConn *sql.DB, startDate time.Time, endDate time.Time) {
@@ -111,6 +121,24 @@ func writeToPostgres(db *sql.DB) {
 	`
 
 	_, err = db.Exec(stmt)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func cleanupTmpTables(db *sql.DB) {
+	stmt := `
+		TRUNCATE TABLE moment_statistics;
+	`
+	_, err := db.Exec(stmt)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	stmt2 := `
+		TRUNCATE TABLE day_statistics;
+	`
+	_, err = db.Exec(stmt2)
 	if err != nil {
 		log.Fatal(err)
 	}
