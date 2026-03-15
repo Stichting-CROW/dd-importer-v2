@@ -15,6 +15,10 @@ func (processor DataProcessor) StartParkEvent(checkIn Event) Event {
 	row := processor.DB.QueryRowx(stmt, checkIn.Bike.SystemID, checkIn.getKey(), checkIn.Bike.Lon, checkIn.Bike.Lat, checkIn.Timestamp, checkIn.Bike.InternalVehicleID)
 	row.Scan(&checkIn.RelatedParkEventID)
 
+	if checkIn.Bike.IsDisabled {
+		processor.StartNonOperationalEvent(checkIn)
+	}
+
 	return checkIn
 }
 
@@ -28,6 +32,7 @@ func (processor DataProcessor) EndParkEvent(checkOut Event) {
 		WHERE bike_id = $2
 		AND end_time is null`
 		processor.DB.MustExec(stmt, checkOut.Timestamp, checkOut.getKey())
+		processor.EndNonOperationalEvent(checkOut)
 		return
 	}
 
@@ -36,6 +41,7 @@ func (processor DataProcessor) EndParkEvent(checkOut Event) {
 		WHERE park_event_id = $2
 	`
 	processor.DB.MustExec(stmt, checkOut.Timestamp, checkOut.RelatedParkEventID)
+	processor.EndNonOperationalEvent(checkOut)
 }
 
 // UpdateLocationParkEvent updates the location of a park_event.
@@ -50,12 +56,20 @@ func (processor DataProcessor) UpdateLocationParkEvent(newEvent Event, eventToUp
 }
 
 func (processor DataProcessor) ResetEndParkEvent(event Event) {
+	if event.RelatedParkEventID == 0 {
+		log.Printf("Can't reset end park event for %s, %s, because there is no related park event id.", event.getKey(), event.Bike.BikeID)
+		return
+	}
+
 	// EndParkEvent ends a park_event in the database when a bike is removed.
 	stmt := `UPDATE park_events
 		SET end_time = null
 		WHERE park_event_id = $1
 	`
 	processor.DB.MustExec(stmt, event.RelatedParkEventID)
+	if event.Bike.IsDisabled {
+		processor.CancelEndNonOperationalEvent(event)
+	}
 }
 
 // GetLastParkEvent couples the last known park event in the database to redis.

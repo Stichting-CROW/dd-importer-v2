@@ -43,6 +43,15 @@ func CleanCompare(old map[string]feed.Bike, new []feed.Bike) Result {
 			processResult.CreatedEvents = append(processResult.CreatedEvents, newEvent)
 		}
 
+		if exists && oldBike.IsDisabled != bike.IsDisabled && bike.BikeID != "" && oldBike.BikeID != "" {
+			newEvent := Event{
+				Bike:      bike,
+				EventType: "non_operational_change",
+				Timestamp: time.Now(),
+			}
+			processResult.CreatedEvents = append(processResult.CreatedEvents, newEvent)
+		}
+
 		processResult.CurrentBikesInFeed[bike.BikeID] = bike
 		delete(old, bike.BikeID)
 	}

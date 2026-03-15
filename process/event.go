@@ -55,6 +55,9 @@ func (processor DataProcessor) ProcessEvent(event Event) {
 		event = processor.vehicleMoved(event)
 	case "correcting_check_out":
 		event = processor.correctingCheckOut(event)
+	// this event is created when a vehicle changes from operational to non-operational or the other way around.
+	case "non_operational_change":
+		event = processor.nonOperationalChange(event)
 	}
 	if event.EventType == "" {
 		return
@@ -65,7 +68,7 @@ func (processor DataProcessor) ProcessEvent(event Event) {
 		log.Print(err)
 	}
 	// clean data, this must be improved for temporary keys
-	_, err = processor.Rdb.LTrim(event.getKey(), 0, 99).Result()
+	_, err = processor.Rdb.LTrim(event.getKey(), 0, 20).Result()
 	if err != nil {
 		log.Print(err)
 	}
@@ -80,6 +83,7 @@ func (processor DataProcessor) checkIn(event Event) Event {
 		return event
 	}
 	event = processor.checkIfTripIsMade(event, previousEvents)
+
 	return event
 }
 
@@ -90,7 +94,6 @@ func (processor DataProcessor) firstCheckIn(event Event) Event {
 	// No existing park_event exits.
 	if newEvent.RelatedParkEventID == 0 {
 		newEvent = processor.StartParkEvent(event)
-	} else {
 	}
 	return newEvent
 }
@@ -103,9 +106,10 @@ func (processor DataProcessor) checkIfTripIsMade(event Event, previousEvents []E
 		return processor.vehicleMoved(event)
 	}
 	if checkIfTripShouldBeResetted(event, lastEvent) == true {
-		return processor.resetTrip(event, previousEvents)
+		return processor.resetTrip(event, lastEvent)
 	}
 
+	event.RelatedParkEventID = lastEvent.RelatedParkEventID
 	event.RelatedTripID = lastEvent.RelatedTripID
 	event = processor.EndTrip(event)
 	event = processor.StartParkEvent(event)
@@ -129,7 +133,6 @@ func (processor DataProcessor) checkOut(event Event) Event {
 	event.RelatedParkEventID = previousEvents[0].RelatedParkEventID
 	processor.EndParkEvent(event)
 	event = processor.StartTrip(event)
-
 	return event
 }
 
@@ -178,9 +181,7 @@ func (processor DataProcessor) getLastEvents(bikeID string) []Event {
 
 }
 
-func (processor DataProcessor) resetTrip(event Event, previousEvents []Event) Event {
-	previousEvent := previousEvents[0]
-
+func (processor DataProcessor) resetTrip(event Event, previousEvent Event) Event {
 	processor.ResetEndParkEvent(previousEvent)
 	processor.CancelTrip(previousEvent)
 	event.EventType = "cancel"
