@@ -45,7 +45,7 @@ func ImportFullFeedVehicles(db *sqlx.DB, feed *feed.Feed) []feed.Bike {
 	}
 	if freeVehicleUrl == "" || vehicleTypeUrl == "" {
 		log.Printf("[%s_%d] freeVehicleUrl or vehicleTypeUrl is not filled. Status code: %s", feed.OperatorID, feed.ID, feed.Url)
-		return FreeBikeStatus{}.Data.Bikes
+		return FreeBikeStatusV2{}.Data.Bikes
 	}
 	vehicles := getData(feed, freeVehicleUrl)
 	vehicleTypes := getVehicleTypes(feed, vehicleTypeUrl, db)

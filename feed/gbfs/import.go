@@ -43,9 +43,16 @@ func getData(dataFeed *feed.Feed, url string) []feed.Bike {
 		return nil
 	}
 
-	GBFSVersion, err := GetMajorVersionFromResponse(data)
-	if err != nil {
-		return nil
+	GBFSVersion := 0
+	if dataFeed.OperatorID == "cykl" {
+		GBFSVersion = 1
+	} else if dataFeed.OperatorID == "deelfietsnederland" {
+		GBFSVersion = 2
+	} else {
+		GBFSVersion, err = GetMajorVersionFromResponse(data)
+		if err != nil {
+			return nil
+		}
 	}
 
 	var bikes []feed.Bike
