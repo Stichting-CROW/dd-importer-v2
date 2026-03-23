@@ -3,10 +3,12 @@ package gbfs
 import (
 	"deelfietsdashboard-importer/feed"
 	"encoding/json"
+	"io"
+	"log"
 )
 
-// FreeBikeStatus is the struct that represents the FreeBikeStatus gbfs structure.
-type FreeBikeStatus struct {
+// FreeBikeStatusV2 is the struct that represents the FreeBikeStatusV2	 gbfs structure.
+type FreeBikeStatusV2 struct {
 	LastUpdated int `json:"last_updated"`
 	TTL         int `json:"ttl"`
 	Data        struct {
@@ -19,19 +21,48 @@ func ImportFeed(feed *feed.Feed) []feed.Bike {
 	return getData(feed, feed.Url)
 }
 
-func getData(feed *feed.Feed, url string) []feed.Bike {
-	res := feed.DownloadData(url)
+func GetBikesFeedV2(data []byte) []feed.Bike {
+	var bikeFeed FreeBikeStatusV2
+	err := json.Unmarshal(data, &bikeFeed)
+	if err != nil {
+		return nil
+	}
+
+	return bikeFeed.Data.Bikes
+}
+
+func getData(dataFeed *feed.Feed, url string) []feed.Bike {
+	res := dataFeed.DownloadData(url)
 	if res == nil {
 		return nil
 	}
-	decoder := json.NewDecoder(res.Body)
-	var bikeFeed FreeBikeStatus
-	decoder.Decode(&bikeFeed)
 
-	// Set SystemID
-	bikes := bikeFeed.Data.Bikes
+	data, err := io.ReadAll(res.Body)
+	if err != nil {
+		log.Printf("Something went wrong while reading the response body: %s", url)
+		return nil
+	}
+
+	GBFSVersion, err := GetMajorVersionFromResponse(data)
+	if err != nil {
+		return nil
+	}
+
+	var bikes []feed.Bike
+	switch GBFSVersion {
+	case 1:
+		log.Printf("Importing feed with GBFS version 1: %s", url)
+		bikes = GetBikesFeedV1(data)
+	case 2:
+		log.Printf("Importing feed with GBFS version 2: %s", url)
+		bikes = GetBikesFeedV2(data)
+	default:
+		log.Printf("Major version %d not supported: %s", GBFSVersion, url)
+		return nil
+	}
+
 	for i := range bikes {
-		bikes[i].SystemID = feed.OperatorID
+		bikes[i].SystemID = dataFeed.OperatorID
 	}
 	return bikes
 }
