@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"deelfietsdashboard-importer/feed/gbfs"
 	"deelfietsdashboard-importer/geoutil"
+	"encoding/json"
 	"log"
 
 	"github.com/lib/pq"
@@ -82,10 +83,70 @@ type Geofence struct {
 	Municipalities []string
 }
 
+type Rule struct {
+	RideEndAllowed     bool `json:"ride_end_allowed"`
+	RideStartAllowed   bool `json:"ride_start_allowed"`
+	RideThroughAllowed bool `json:"ride_through_allowed"`
+}
+
+func isDisallowedRule(r Rule) bool {
+	return !r.RideEndAllowed &&
+		!r.RideStartAllowed &&
+		!r.RideThroughAllowed
+}
+
+func shouldKeepFeature(f *geojson.Feature) bool {
+	rulesRaw, ok := f.Properties["rules"]
+	if !ok {
+		return true
+	}
+
+	rules, err := parseRules(rulesRaw)
+	if err != nil {
+		return true
+	}
+
+	for _, rule := range rules {
+		if !isDisallowedRule(rule) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func parseRules(v interface{}) ([]Rule, error) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+
+	var rules []Rule
+	if err := json.Unmarshal(b, &rules); err != nil {
+		return nil, err
+	}
+
+	return rules, nil
+}
+
+func filterFeaturesThatBlockBikes(features geojson.FeatureCollection) []*geojson.Feature {
+	filtered := make([]*geojson.Feature, 0, len(features.Features))
+
+	for _, f := range features.Features {
+		if shouldKeepFeature(f) {
+			filtered = append(filtered, f)
+		}
+	}
+
+	return filtered
+}
+
 func (dataProcessor DataProcessor) processGeofence(feed gbfs.GBFSGeofencing) []Geofence {
 	var featureCollection geojson.FeatureCollection
 
 	err := featureCollection.UnmarshalJSON(feed.Data.GeofencingZones)
+	featureCollection.Features = filterFeaturesThatBlockBikes(featureCollection)
+
 	if err != nil && err.Error() == "geom: stride mismatch, got 3, want 2" {
 		log.Printf("Removing third coordinate from GeoJSON for feed %s", feed.OperatorID)
 		fixedGeoJSON, err := geoutil.RemoveThirdCoordinate(feed.Data.GeofencingZones)
