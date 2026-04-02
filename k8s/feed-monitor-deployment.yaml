@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: feed-monitor
+  labels:
+    app: feed-monitor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: feed-monitor
+  template:
+    metadata:
+      labels:
+        app: feed-monitor
+    spec:
+      containers:
+        - name: feed-monitor
+          image: registry.gitlab.com/bikedashboard/feed-monitor:latest
+          env:
+            - name: PGHOST
+              value: "10.133.75.95"
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-password-deelfietsdashboard
+                  key: password
+            - name: PGDATABASE
+              value: "deelfietsdashboard"
+            - name: PGUSER
+              value: "deelfietsdashboard"
+            - name: TELEGRAM_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  key: telegram_token
+                  name: telegram-token-ops-bot
+            - name: TELEGRAM_CHAT_ID
+              value: "-716168993"
