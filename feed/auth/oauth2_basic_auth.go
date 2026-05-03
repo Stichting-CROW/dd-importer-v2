@@ -10,25 +10,28 @@ import (
 	"time"
 )
 
-type OauthCredentialsBolt struct {
+type OauthCredentialsBasicAuth struct {
 	ExpireTime     time.Time
 	TokenURL       string
 	AccessToken    string
 	OauthTokenBody map[string]interface{}
 }
 
-func (o *OauthCredentialsBolt) GetAccessToken() string {
+func (o *OauthCredentialsBasicAuth) GetAccessToken() string {
 	if time.Now().After(o.ExpireTime) {
-		log.Print("Get new accesstoken Bolt.")
+		log.Printf("Get new accesstoken for basic auth %s", o.TokenURL)
 		o.refreshToken()
 	}
 	return o.AccessToken
 }
 
-func (o *OauthCredentialsBolt) refreshToken() {
-	log.Print("Refresh token")
+func (o *OauthCredentialsBasicAuth) refreshToken() {
+	log.Printf("Refresh token for basic auth %s", o.TokenURL)
 	params := url.Values{}
 	params.Set("grant_type", "client_credentials")
+	if o.OauthTokenBody["scope"] != nil {
+		params.Set("scope", o.OauthTokenBody["scope"].(string))
+	}
 	request_params := bytes.NewBufferString(params.Encode())
 
 	req, err := http.NewRequest("POST", o.TokenURL, request_params)

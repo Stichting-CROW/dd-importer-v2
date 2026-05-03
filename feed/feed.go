@@ -19,8 +19,7 @@ type Feed struct {
 	LastImport                 map[string]Bike
 	ImportStrategy             string
 	OAuth2Credentials          auth.OauthCredentials
-	OAuth2CredentialsGosharing auth.OauthCredentialsGosharing
-	OAuth2CredentialsBolt      auth.OauthCredentialsBolt
+	OAuth2CredentialsBasicAuth auth.OauthCredentialsBasicAuth
 	OAuth2CredentialsMoveyou   auth.OauthCredentialsMoveyou
 	OAuth2CredentialsDott      auth.OauthCredentialsDott
 	AuthenticationType         string

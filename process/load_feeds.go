@@ -19,10 +19,8 @@ func LoadFeeds(oldFeeds []feed.Feed, db *sqlx.DB) []feed.Feed {
 		newFeeds[index].NumberOfPulls = oldFeed.NumberOfPulls
 		newFeeds[index].OAuth2Credentials.AccessToken = oldFeed.OAuth2Credentials.AccessToken
 		newFeeds[index].OAuth2Credentials.ExpireTime = oldFeed.OAuth2Credentials.ExpireTime
-		newFeeds[index].OAuth2CredentialsGosharing.AccessToken = oldFeed.OAuth2CredentialsGosharing.AccessToken
-		newFeeds[index].OAuth2CredentialsGosharing.ExpireTime = oldFeed.OAuth2CredentialsGosharing.ExpireTime
-		newFeeds[index].OAuth2CredentialsBolt.AccessToken = oldFeed.OAuth2CredentialsBolt.AccessToken
-		newFeeds[index].OAuth2CredentialsBolt.ExpireTime = oldFeed.OAuth2CredentialsBolt.ExpireTime
+		newFeeds[index].OAuth2CredentialsBasicAuth.AccessToken = oldFeed.OAuth2CredentialsBasicAuth.AccessToken
+		newFeeds[index].OAuth2CredentialsBasicAuth.ExpireTime = oldFeed.OAuth2CredentialsBasicAuth.ExpireTime
 		newFeeds[index].OAuth2CredentialsMoveyou.AccessToken = oldFeed.OAuth2CredentialsMoveyou.AccessToken
 		newFeeds[index].OAuth2CredentialsMoveyou.ExpireTime = oldFeed.OAuth2CredentialsMoveyou.ExpireTime
 	}
@@ -141,12 +139,12 @@ func parseAuthentication(newFeed feed.Feed, data []byte) feed.Feed {
 	case "oauth2":
 		newFeed.OAuth2Credentials.OauthTokenBody = result["OAuth2Credentials"].(map[string]interface{})
 		newFeed.OAuth2Credentials.TokenURL = result["TokenURL"].(string)
-	case "oauth2-gosharing":
-		newFeed.OAuth2CredentialsGosharing.OauthTokenBody = result["OAuth2Credentials"].(map[string]interface{})
-		newFeed.OAuth2CredentialsGosharing.TokenURL = result["TokenURL"].(string)
 	case "oauth2-bolt":
-		newFeed.OAuth2CredentialsBolt.OauthTokenBody = result["OAuth2Credentials"].(map[string]interface{})
-		newFeed.OAuth2CredentialsBolt.TokenURL = result["TokenURL"].(string)
+		newFeed.OAuth2CredentialsBasicAuth.OauthTokenBody = result["OAuth2Credentials"].(map[string]interface{})
+		newFeed.OAuth2CredentialsBasicAuth.TokenURL = result["TokenURL"].(string)
+	case "oauth2-basic-auth":
+		newFeed.OAuth2CredentialsBasicAuth.OauthTokenBody = result["OAuth2Credentials"].(map[string]interface{})
+		newFeed.OAuth2CredentialsBasicAuth.TokenURL = result["TokenURL"].(string)
 	case "oauth2-moveyou":
 		newFeed.OAuth2CredentialsMoveyou.OauthTokenBody = result["OAuth2Credentials"].(map[string]interface{})
 		newFeed.OAuth2CredentialsMoveyou.TokenURL = result["TokenURL"].(string)

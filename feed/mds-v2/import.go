@@ -174,7 +174,7 @@ func combineFeeds(vehicles []MdsVehicleV2, vehicleStatuses []MdsVehicleStatus, o
 	res := []feed.Bike{}
 	for _, vehicleStatus := range vehicleStatuses {
 		vehicleState := vehicleStatus.LastEvent.VehicleState
-		if !slices.Contains([]string{"available", "non_operational", "reserved", "elsewhere"}, vehicleState) {
+		if !slices.Contains([]string{"available", "non_operational", "reserved", "non_contactable"}, vehicleState) {
 			continue
 		}
 

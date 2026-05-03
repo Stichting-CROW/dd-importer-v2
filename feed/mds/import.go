@@ -92,8 +92,7 @@ func convertMds(mdsFeed MdsVehiclesRespone, systemID string) []feed.Bike {
 	for _, mdsVehicle := range mdsFeed.Data.Vehicle {
 		if mdsVehicle.LastVehicleState == "available" ||
 			mdsVehicle.LastVehicleState == "non_operational" ||
-			mdsVehicle.LastVehicleState == "reserved" ||
-			mdsVehicle.LastVehicleState == "elsewhere" {
+			mdsVehicle.LastVehicleState == "reserved" {
 			vehicle := convertMdsToVehicle(mdsVehicle, systemID)
 			vehicles = append(vehicles, vehicle)
 		}

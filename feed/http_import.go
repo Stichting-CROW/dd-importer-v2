@@ -8,7 +8,6 @@ import (
 
 func (feed *Feed) DownloadData(url string) *http.Response {
 	return feed.DownloadDataAllowTimeout(url, time.Second*15)
-
 }
 
 func (feed *Feed) DownloadDataAllowTimeout(url string, seconds time.Duration) *http.Response {
@@ -47,11 +46,11 @@ func (feed *Feed) addAuth(r *http.Request) *http.Request {
 		if feed.ApiKeyName != "" {
 			r.Header.Add(feed.ApiKeyName, feed.ApiKey)
 		}
-	case "oauth2-gosharing":
-		token := feed.OAuth2CredentialsGosharing.GetAccessToken()
-		r.Header.Add("authorization", "Bearer "+token)
 	case "oauth2-bolt":
-		token := feed.OAuth2CredentialsBolt.GetAccessToken()
+		token := feed.OAuth2CredentialsBasicAuth.GetAccessToken()
+		r.Header.Add("authorization", "Bearer "+token)
+	case "oauth2-basic-auth":
+		token := feed.OAuth2CredentialsBasicAuth.GetAccessToken()
 		r.Header.Add("authorization", "Bearer "+token)
 	case "oauth2-moveyou":
 		token := feed.OAuth2CredentialsMoveyou.GetAccessToken()

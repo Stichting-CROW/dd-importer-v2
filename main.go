@@ -87,6 +87,7 @@ func importLoop(feeds []feed.Feed, dataProcessor process.DataProcessor) {
 func importFeed(operator_feed *feed.Feed, waitGroup *sync.WaitGroup, dataProcessor process.DataProcessor, import_succesfull chan int, vehicles chan []feed.Bike) {
 	defer waitGroup.Done()
 	var newBikes []feed.Bike
+	start := time.Now()
 	switch operator_feed.Type {
 	case "gbfs":
 		newBikes = gbfs.ImportFeed(operator_feed)
@@ -98,6 +99,9 @@ func importFeed(operator_feed *feed.Feed, waitGroup *sync.WaitGroup, dataProcess
 		newBikes = mdsv2.ImportFeed(operator_feed)
 	case "full_gbfs":
 		newBikes = gbfs.ImportFullFeedVehicles(dataProcessor.DB, operator_feed)
+	}
+	if time.Since(start).Seconds() > 7 {
+		log.Printf("[%s_%d] %s import took %.2f seconds, which is quite long, investigate if this can be improved", operator_feed.OperatorID, operator_feed.ID, operator_feed.Type, time.Since(start).Seconds())
 	}
 
 	// keobike en gosharing gaan fout
