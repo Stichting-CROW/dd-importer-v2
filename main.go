@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 )
 
 func main() {
@@ -141,8 +142,10 @@ func setDefaultInternalVehicleType(bikes []feed.Bike, defaultType int, defaultFo
 
 // This function checkOuts all the bikes that are not in a feed anymore when the program starts running.
 func cleanup(feeds []feed.Feed, dataProcessor process.DataProcessor) []process.Event {
-	log.Print("Wait 25s until all events are processed.")
-	time.Sleep(time.Second * 25)
+	log.Print("Wait until all events are processed.")
+	for len(dataProcessor.EventChan) > 0 {
+		time.Sleep(100 * time.Millisecond)
+	}
 	events := []process.Event{}
 	operators := map[string]bool{}
 	bikeIDsInFeed := map[string]bool{}
@@ -194,19 +197,18 @@ func cleanup(feeds []feed.Feed, dataProcessor process.DataProcessor) []process.E
 }
 
 func getAllParkedBikesFromDatabase(dataProcessor process.DataProcessor, operators map[string]bool) *sqlx.Rows {
-	keys := []string{}
+	activeOperators := []string{}
 	for key := range operators {
-		keys = append(keys, key)
+		activeOperators = append(activeOperators, key)
 	}
-	activeOperators := strings.Join(keys, ",")
-	log.Printf("Getting all parked bikes from database for operators: %s", activeOperators)
+	log.Printf("Getting all parked bikes from database for operators: %s", strings.Join(activeOperators, ","))
 
 	stmt := `SELECT system_id, bike_id, park_event_id 
 		FROM park_events 
 		WHERE end_time is null 
-		AND system_id IN ($1);
+		AND system_id = ANY($1);
 	`
-	rows, err := dataProcessor.DB.Queryx(stmt, activeOperators)
+	rows, err := dataProcessor.DB.Queryx(stmt, pq.Array(activeOperators))
 	if err != nil {
 		log.Print(err)
 	}

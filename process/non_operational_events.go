@@ -36,7 +36,6 @@ func (processor DataProcessor) StartNonOperationalEvent(checkIn Event) Event {
 
 func (processor DataProcessor) EndNonOperationalEvent(event Event) {
 	// fail safe
-	log.Printf("End non-operational event for %s, related park event id: %d, event type: %s", event.getKey(), event.RelatedParkEventID, event.EventType)
 	if event.RelatedParkEventID == 0 {
 		log.Printf("Can't close non-operational event %s, %s", event.getKey(), event.Bike.BikeID)
 		return
