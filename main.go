@@ -7,7 +7,9 @@ import (
 	"deelfietsdashboard-importer/feed/mds"
 	mdsv2 "deelfietsdashboard-importer/feed/mds-v2"
 	"deelfietsdashboard-importer/feed/tomp"
+	"deelfietsdashboard-importer/monitor"
 	"deelfietsdashboard-importer/process"
+	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -33,6 +35,7 @@ func importLoop(feeds []feed.Feed, dataProcessor process.DataProcessor) {
 
 	lastTimeUpdateFeedConfig := time.Time{}
 	firstImport := true
+	lastCleanupDate := time.Time{}
 	for {
 		import_succesfull_chan := make(chan int, 1000)
 
@@ -54,13 +57,16 @@ func importLoop(feeds []feed.Feed, dataProcessor process.DataProcessor) {
 		importDuration := time.Since(startImport)
 		log.Printf("All imports took %v", importDuration)
 
-		if firstImport {
+		now := time.Now()
+		todayAt2 := time.Date(now.Year(), now.Month(), now.Day(), 2, 0, 0, 0, now.Location())
+		if firstImport || (now.After(todayAt2) && lastCleanupDate.Before(todayAt2)) {
 			firstImport = false
-			log.Print("This is the first import run cleanup:")
+			log.Print("Running cleanup:")
 			events := cleanup(feeds, dataProcessor)
 			dataProcessor.EventChan <- events
+			lastCleanupDate = time.Now()
 			importDuration = time.Since(startImport)
-			log.Printf("All imports including cleanup took %v", importDuration)
+			log.Printf("Cleanup took %v, %d corrected events", importDuration, len(events))
 		}
 
 		close(import_succesfull_chan)
@@ -106,8 +112,6 @@ func importFeed(operator_feed *feed.Feed, waitGroup *sync.WaitGroup, dataProcess
 
 	// keobike en gosharing gaan fout
 	if operator_feed.DefaultVehicleType != nil {
-		log.Printf("Overrule default vehicle type %s %d", operator_feed.OperatorID, *operator_feed.DefaultVehicleType)
-
 		newBikes = setDefaultInternalVehicleType(newBikes, *operator_feed.DefaultVehicleType, *operator_feed.DefaultFormFactor)
 	}
 
@@ -154,18 +158,36 @@ func cleanup(feeds []feed.Feed, dataProcessor process.DataProcessor) []process.E
 	}
 
 	rows := getAllParkedBikesFromDatabase(dataProcessor, operators)
+	counter := 0
+	logMsgs := ""
 	for rows.Next() {
+		counter += 1
 		event := process.Event{}
-		err := rows.Scan(&event.OperatorID, &event.Bike.BikeID, &event.RelatedParkEventID)
+		var bikeID string
+		err := rows.Scan(&event.OperatorID, &bikeID, &event.RelatedParkEventID)
+		event.Bike.SystemID = strings.Split(bikeID, ":")[0]
+		event.Bike.BikeID = strings.Split(bikeID, ":")[1]
 		if err != nil {
 			log.Print(err)
 		}
-		if _, ok := bikeIDsInFeed[event.Bike.BikeID]; !ok {
-			log.Print("BikeID not found", event.Bike.BikeID)
+		if _, ok := bikeIDsInFeed[bikeID]; !ok {
+			logMsg := fmt.Sprintf("bike_id=%s, operator_id=%s, park_event_id=%d", event.Bike.BikeID, event.Bike.SystemID, event.RelatedParkEventID)
+			log.Printf("Correcting checkout: %s", logMsg)
+			logMsgs += logMsg + "\n"
 			event.EventType = "correcting_check_out"
 			event.Timestamp = time.Now()
 			events = append(events, event)
 		}
+	}
+
+	log.Printf("%d open park_events in database during cleanup.", counter)
+
+	notifier, err := monitor.NewTelegramNotifier()
+	if err != nil {
+		log.Print(err)
+	}
+	if logMsgs != "" {
+		notifier.SendAlert(fmt.Sprintf("Corrected checkouts during cleanup: \n%s", logMsgs))
 	}
 
 	return events
@@ -177,6 +199,7 @@ func getAllParkedBikesFromDatabase(dataProcessor process.DataProcessor, operator
 		keys = append(keys, key)
 	}
 	activeOperators := strings.Join(keys, ",")
+	log.Printf("Getting all parked bikes from database for operators: %s", activeOperators)
 
 	stmt := `SELECT system_id, bike_id, park_event_id 
 		FROM park_events 

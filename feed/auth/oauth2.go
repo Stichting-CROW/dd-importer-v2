@@ -32,7 +32,6 @@ type OAuthResult struct {
 }
 
 func (o *OauthCredentials) refreshToken() {
-	log.Print("Refresh token check")
 	params := url.Values{}
 	params.Set("client_id", o.OauthTokenBody["client_id"].(string))
 	params.Set("client_secret", o.OauthTokenBody["client_secret"].(string))
@@ -49,7 +48,6 @@ func (o *OauthCredentials) refreshToken() {
 		log.Print(err)
 	}
 	defer resp.Body.Close()
-	log.Printf("Statuscode %d", resp.StatusCode)
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {

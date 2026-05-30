@@ -137,7 +137,6 @@ func (processor DataProcessor) checkOut(event Event) Event {
 }
 
 func (processor DataProcessor) correctingCheckOut(event Event) Event {
-	log.Print("End a park event that was missed before this program was started.")
 	processor.EndParkEvent(event)
 	return event
 }

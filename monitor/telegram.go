@@ -61,8 +61,28 @@ func NewTelegramNotifier() (*TelegramNotifier, error) {
 	}, nil
 }
 
+const maxTelegramMessageLength = 4096
+
+func truncateMessage(message string) string {
+	if len(message) <= maxTelegramMessageLength {
+		return message
+	}
+	const suffix = "...\n\n<i>Message truncated, see logs for full details.</i>"
+	maxLength := maxTelegramMessageLength - len(suffix)
+	// Avoid cutting in the middle of a multi-byte UTF-8 rune
+	for maxLength > 0 && message[maxLength]&0xC0 == 0x80 {
+		maxLength--
+	}
+	return message[:maxLength] + suffix
+}
+
 // SendAlert sends a message to the configured Telegram chat with retry logic
 func (t *TelegramNotifier) SendAlert(message string) error {
+	if len(message) > maxTelegramMessageLength {
+		log.Printf("Telegram message exceeds %d characters and will be truncated. Full message:\n%s", maxTelegramMessageLength, message)
+		message = truncateMessage(message)
+	}
+
 	// Rate limiting: ensure we don't send too fast
 	t.mu.Lock()
 	timeSinceLastSend := time.Since(t.lastSendTime)

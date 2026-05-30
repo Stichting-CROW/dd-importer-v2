@@ -45,7 +45,6 @@ func cacheAvailableVehicles(dataProcessor process.DataProcessor, vehicleArrays c
 			key := fmt.Sprintf("%s:%s", vehicle.SystemID, vehicle.BikeID)
 			cachedVehicle, ok := lookupRotatedIDs[key]
 			if !ok {
-				log.Printf("%s not found during caching", key)
 				continue
 			}
 			cachedVehicle.IsDisabled = vehicle.IsDisabled

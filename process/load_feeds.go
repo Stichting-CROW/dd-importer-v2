@@ -119,7 +119,6 @@ func serializeFeeds(rows *sqlx.Rows) []feed.Feed {
 		// Tijdelijk filter voor testen.
 		newFeed = parseAuthentication(newFeed, authentication)
 		json.Unmarshal([]byte(requestHeaders), &newFeed.RequestHeaders)
-		log.Printf("%+v", newFeed)
 		feeds = append(feeds, newFeed)
 	}
 	return feeds

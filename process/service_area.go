@@ -204,7 +204,7 @@ func (dataProcessor DataProcessor) insertGeofence(geometry wkb.Geom, operatorID 
 		var gmcode string
 		result.Scan(&gmcode)
 		municipalities = append(municipalities, gmcode)
-		log.Print(municipalities)
+
 	}
 
 	// If no municipalities found, do not insert geofence.

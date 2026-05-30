@@ -25,7 +25,6 @@ type OauthCredentialsDott struct {
 
 func (o *OauthCredentialsDott) GetAccessToken() string {
 	if time.Now().After(o.ExpireTime) {
-		log.Print("Get new accesstoken Dott.")
 		o.refreshToken()
 	}
 	return o.AccessToken
