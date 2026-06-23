@@ -26,6 +26,7 @@ func countVehiclesInPublicSpace(db *sql.DB, timestamp time.Time, measurementMome
 			COUNT(*) AS value
 		FROM park_events_in_zone
 		WHERE start_time <= $1 AND (end_time >= $1 OR end_time IS NULL)
+		AND zone_type = 'municipality'
 		GROUP BY stat_ref, system_id, vehicle_type;
 	`
 	_, err := db.Exec(stmt, timestamp, measurementMomentIndex, util.GetNumericIndicatorID("count_vehicles_in_public_space"))

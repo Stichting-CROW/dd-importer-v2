@@ -23,6 +23,7 @@ func CountVehiclesInPublicSpaceForLongerThenXDays(db *sql.DB, measurementMoment 
 	WHERE start_time <= $1
 	AND (end_time >= $1 OR end_time IS NULL)
 	AND start_time <= $1 - ($2 * INTERVAL '1 day')
+	AND zone_type = 'municipality'
 	GROUP BY stat_ref, system_id, vehicle_type;
 	`
 	_, err := db.Exec(stmt, measurementMoment, durationDays, util.GetNumericIndicatorID("count_vehicles_in_public_space_longer_then_"+strconv.Itoa(durationDays)+"_days"))

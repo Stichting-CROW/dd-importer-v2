@@ -100,7 +100,7 @@ func loadZones(db *sql.DB) {
   			END AS buffered_area
 		FROM zones z
 		LEFT JOIN geographies g USING(zone_id)
-		WHERE zone_type IN (''custom'', ''residential_area'', ''municipality'');
+		WHERE zone_type IN (''custom'', ''municipality'');
 		');
 	`
 
