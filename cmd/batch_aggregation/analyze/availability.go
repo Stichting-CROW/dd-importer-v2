@@ -20,6 +20,7 @@ func CountAvailableVehiclesInPublicSpace(db *sql.DB, date time.Time, selected []
 
 	measurementMoments := util.GetDefaultMeasrurementMoments(date)
 	for momentIndex, moment := range measurementMoments {
+		log.Print(date.Format("2006-01-02") + ": Counting available vehicles in public space at " + moment.Format("2006-01-02 15:04:05") + "...")
 		countAvailableVehiclesAtMoment(db, date, moment, momentIndex, indicatorID)
 	}
 }
@@ -70,7 +71,7 @@ func countAvailableVehiclesAtMoment(db *sql.DB, date time.Time, moment time.Time
 		GROUP BY geometry_ref, system_id, vehicle_type;
 	`
 
-	_, err := db.Exec(stmt, date, measurementMomentIndex, indicatorID, moment)
+	_, err := db.Exec(stmt, date.Format("2006-01-02"), measurementMomentIndex, indicatorID, moment)
 	if err != nil {
 		log.Fatal(err)
 	}

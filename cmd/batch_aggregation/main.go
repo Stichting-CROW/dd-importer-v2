@@ -12,6 +12,7 @@ import (
 	"deelfietsdashboard-importer/cmd/batch_aggregation/indicators"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/spf13/cobra"
 )
 
@@ -122,7 +123,7 @@ func executeRun(recalculate bool, selected []indicators.Indicator, from time.Tim
 	syncIndicatorsToPostgres(pgConn)
 
 	if recalculate {
-		deleteIndicatorData(pgConn, selected)
+		deleteIndicatorData(pgConn, selected, from, to)
 	}
 
 	loadZones(dConn)
@@ -152,7 +153,11 @@ func determineDateRange(recalculate bool, selected []indicators.Indicator, from 
 		requestedStart = getNewestDateInMomentStatistics(pgConn).AddDate(0, 0, 1)
 	}
 
+	if to.Year() <= 1 {
+		to = time.Now().Local().AddDate(0, 0, -1)
+	}
 	runStart := to
+
 	for _, indicator := range selected {
 		effectiveStart := indicators.EffectiveStartDate(indicator, requestedStart)
 		if effectiveStart.Before(runStart) {
@@ -250,7 +255,7 @@ func syncIndicatorsToPostgres(pgConn *pgx.Conn) {
 	}
 }
 
-func deleteIndicatorData(pgConn *pgx.Conn, selected []indicators.Indicator) {
+func deleteIndicatorData(pgConn *pgx.Conn, selected []indicators.Indicator, from time.Time, to time.Time) {
 	ids := make([]int32, len(selected))
 	idNames := make([]string, len(selected))
 	for i, indicator := range selected {
@@ -258,19 +263,27 @@ func deleteIndicatorData(pgConn *pgx.Conn, selected []indicators.Indicator) {
 		idNames[i] = indicator.TextID
 	}
 
-	log.Printf("Deleting existing data for indicators: %s", strings.Join(idNames, ", "))
+	log.Printf("Deleting existing data for indicators %s from %s to %s",
+		strings.Join(idNames, ", "),
+		from.Format("2006-01-02"),
+		to.Format("2006-01-02"),
+	)
 
 	_, err := pgConn.Exec(context.Background(),
-		"DELETE FROM moment_statistics WHERE indicator = ANY($1);",
+		"DELETE FROM moment_statistics WHERE indicator = ANY($1) AND date >= $2 AND date <= $3;",
 		ids,
+		from.Format("2006-01-02"),
+		to.Format("2006-01-02"),
 	)
 	if err != nil {
 		log.Fatalf("Failed to delete moment_statistics: %v", err)
 	}
 
 	_, err = pgConn.Exec(context.Background(),
-		"DELETE FROM day_statistics WHERE indicator = ANY($1);",
+		"DELETE FROM day_statistics WHERE indicator = ANY($1) AND date >= $2 AND date <= $3;",
 		ids,
+		from.Format("2006-01-02"),
+		to.Format("2006-01-02"),
 	)
 	if err != nil {
 		log.Fatalf("Failed to delete day_statistics: %v", err)
@@ -334,16 +347,23 @@ func cleanupTmpTables(db *sql.DB) {
 }
 
 func getNewestDateInMomentStatistics(db *pgx.Conn) time.Time {
-	var newestDate time.Time
+	var newestDate pgtype.Date
+
 	log.Print("Getting newest date in moment_statistics...")
+
 	err := db.QueryRow(context.Background(), `
-		SELECT COALESCE(MAX(date), '2019-12-31'::DATE)
-		FROM moment_statistics;
-	`).Scan(&newestDate)
+    SELECT COALESCE(MAX(date), DATE '2019-12-31')
+    FROM moment_statistics;
+`).Scan(&newestDate)
 	if err != nil {
 		log.Fatal(err)
 	}
-	return newestDate
+
+	fmt.Printf("%+v\n", newestDate)
+	fmt.Println("Valid:", newestDate.Valid)
+	fmt.Println("Time:", newestDate.Time)
+
+	return newestDate.Time
 }
 
 func writeTmpTableToCSV(db *sql.DB) {

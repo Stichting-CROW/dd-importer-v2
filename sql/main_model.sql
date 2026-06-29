@@ -363,8 +363,12 @@ CREATE TABLE IF NOT EXISTS day_statistics (
     PRIMARY KEY (date, indicator, geometry_ref, system_id, vehicle_type)
 );
 
-CREATE INDEX idx_day_statistics_covering
-ON day_statistics (geometry_ref, indicator, system_id, vehicle_type, date)
+CREATE INDEX idx_day_statistics_geometry_date
+ON day_statistics (geometry_ref, date, indicator, system_id, vehicle_type)
+INCLUDE (value);
+
+CREATE INDEX idx_day_statistics_system_date
+ON day_statistics (system_id, date, indicator, geometry_ref, vehicle_type)
 INCLUDE (value);
 
 -- Create feed_downtime table

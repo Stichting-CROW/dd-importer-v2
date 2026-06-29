@@ -210,7 +210,7 @@ func loadTripsInBetween(db *sql.DB, startDate time.Time, endDate time.Time) {
 		FROM trips
 		JOIN vehicle_type
 		USING(vehicle_type_id)
-		WHERE (end_time >= ''%s''::date AND end_time < ''%s''::date + INTERVAL ''1 day'';'
+		WHERE end_time >= ''%s''::date AND end_time < ''%s''::date + INTERVAL ''1 day'';'
 	);
 	`
 	stmt = fmt.Sprintf(stmt, startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))

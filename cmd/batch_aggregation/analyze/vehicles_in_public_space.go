@@ -13,6 +13,7 @@ func CountVehiclesInPublicSpaceOnDate(db *sql.DB, date time.Time, selected []ind
 		return
 	}
 
+	log.Print(date.Format("2006-01-02") + ": Counting vehicles in public space...")
 	measurementMoments := util.GetDefaultMeasrurementMoments(date)
 	for moment_index, moment := range measurementMoments {
 		countVehiclesInPublicSpace(db, moment, moment_index)
