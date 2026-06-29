@@ -52,6 +52,36 @@ var All = []Indicator{
 		Description: "Het aantal voertuigen dat verkeerd geparkeerd staat per dag in een no-parking zone.",
 		FirstDay:    DefaultFirstDay,
 	},
+	{
+		ID:          7,
+		TextID:      "count_vehicles_non_operational_longer_then_24_hours",
+		Description: "Elke dag om 3:30 uur wordt bepaald hoeveel voertuigen in de openbare ruimte een niet-operationele periode hebben langer dan 24 uur.",
+		FirstDay:    time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC),
+	},
+	{
+		ID:          8,
+		TextID:      "count_vehicles_non_operational_longer_then_7_days",
+		Description: "Elke dag om 3:30 uur wordt bepaald hoeveel voertuigen in de openbare ruimte een niet-operationele periode hebben langer dan 7 dagen.",
+		FirstDay:    time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC),
+	},
+	{
+		ID:          9,
+		TextID:      "count_trips_per_day",
+		Description: "Het aantal ritten dat op een dag wordt afgerond in een gemeente.",
+		FirstDay:    DefaultFirstDay,
+	},
+	{
+		ID:          10,
+		TextID:      "trips_per_vehicle_per_day",
+		Description: "Het aantal ritten per voertuig op een dag, berekend als count_trips_per_day gedeeld door count_vehicles_in_public_space.",
+		FirstDay:    DefaultFirstDay,
+	},
+	{
+		ID:          11,
+		TextID:      "available_vehicles_in_public_space",
+		Description: "Het aantal voertuigen in de openbare ruimte die niet defect zijn op 6 momenten per dag, aangevuld met lopende ritten die voor middernacht eindigen.",
+		FirstDay:    time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC),
+	},
 }
 
 var (

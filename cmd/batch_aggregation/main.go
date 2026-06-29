@@ -185,19 +185,25 @@ func aggregateAndStoreData(dConn *sql.DB, startDate time.Time, endDate time.Time
 		// Cleanup and write to Postgres every 5 batches
 		if processedBatches%5 == 0 {
 			analyze.AggregateVehiclesInPublicSpacePerDay(dConn, selected)
+			analyze.ComputeTripsPerVehiclePerDay(dConn, selected)
+			analyze.AggregateAvailableVehiclesPerDay(dConn, selected)
 			writeToPostgres(dConn)
 			cleanupTmpTables(dConn)
 		}
 	}
 	analyze.AggregateVehiclesInPublicSpacePerDay(dConn, selected)
+	analyze.ComputeTripsPerVehiclePerDay(dConn, selected)
+	analyze.AggregateAvailableVehiclesPerDay(dConn, selected)
 	writeToPostgres(dConn)
 	cleanupTmpTables(dConn)
 }
 
 func analyzeChunk(dConn *sql.DB, startDate time.Time, endDate time.Time, selected []indicators.Indicator) {
 	loadParkEventInBetween(dConn, startDate, endDate)
-	//loadParkEventOnDate(dConn, date)
+	loadNonOperationalEventsInBetween(dConn, startDate, endDate)
+	loadTripsInBetween(dConn, startDate, endDate)
 	analyze.FindIntersectionsWithZones(dConn)
+	analyze.FindTripIntersectionsWithZones(dConn)
 
 	for d := startDate; !d.After(endDate); d = d.AddDate(0, 0, 1) {
 		log.Printf("Analyzing date %s", d.Format("2006-01-02"))
@@ -218,7 +224,11 @@ func analyzeDay(dConn *sql.DB, date time.Time, selected []indicators.Indicator) 
 	analyze.CountVehiclesInPublicSpaceForLongerThenXDays(dConn, measurementMoment, 3, selected)
 	analyze.CountVehiclesInPublicSpaceForLongerThenXDays(dConn, measurementMoment, 7, selected)
 	analyze.CountVehiclesInPublicSpaceForLongerThenXDays(dConn, measurementMoment, 14, selected)
+	analyze.CountNonOperationalVehiclesLongerThen24Hours(dConn, measurementMoment, selected)
+	analyze.CountNonOperationalVehiclesLongerThen7Days(dConn, measurementMoment, selected)
 	analyze.CountVehiclesInPublicSpaceOnDate(dConn, measurementMoment, selected)
+	analyze.CountTripsPerDay(dConn, date, selected)
+	analyze.CountAvailableVehiclesInPublicSpace(dConn, date, selected)
 }
 
 func syncIndicatorsToPostgres(pgConn *pgx.Conn) {

@@ -163,3 +163,60 @@ func loadParkEventInBetween(db *sql.DB, startDate time.Time, endDate time.Time) 
 		log.Fatal(err)
 	}
 }
+
+func loadNonOperationalEventsInBetween(db *sql.DB, startDate time.Time, endDate time.Time) {
+	stmt := `
+	DROP TABLE IF EXISTS non_operational_events;
+	`
+	_, err := db.Exec(stmt)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	stmt = `
+	CREATE TABLE IF NOT EXISTS non_operational_events AS
+	SELECT non_operational_event_id, park_event_id, start_time, end_time
+	FROM postgres_query('postgres_db', 
+		'SELECT non_operational_event_id, park_event_id, start_time, end_time
+		FROM non_operational_event
+		WHERE (end_time >= ''%s''::date or end_time IS NULL) AND start_time < ''%s''::date + INTERVAL ''1 day'';'
+	);
+	`
+	stmt = fmt.Sprintf(stmt, startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
+
+	_, err = db.Exec(stmt)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func loadTripsInBetween(db *sql.DB, startDate time.Time, endDate time.Time) {
+	stmt := `
+	DROP TABLE IF EXISTS trips;
+	`
+	_, err := db.Exec(stmt)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	stmt = `
+	CREATE TABLE IF NOT EXISTS trips AS
+	SELECT trip_id, ST_GeomFromWKB(start_location) AS start_location, ST_GeomFromWKB(end_location) AS end_location,
+	start_time, end_time, system_id, vehicle_type
+	FROM postgres_query('postgres_db', 
+		'SELECT trip_id, ST_AsBinary(start_location) AS start_location, ST_AsBinary(end_location) AS end_location,
+		start_time, end_time, trips.system_id,
+		CONCAT(form_factor, '':'', propulsion_type) AS vehicle_type
+		FROM trips
+		JOIN vehicle_type
+		USING(vehicle_type_id)
+		WHERE (end_time >= ''%s''::date AND end_time < ''%s''::date + INTERVAL ''1 day'';'
+	);
+	`
+	stmt = fmt.Sprintf(stmt, startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
+
+	_, err = db.Exec(stmt)
+	if err != nil {
+		log.Fatal(err)
+	}
+}

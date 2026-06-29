@@ -32,3 +32,28 @@ func FindIntersectionsWithZones(db *sql.DB) {
 		log.Fatal(err)
 	}
 }
+
+func FindTripIntersectionsWithZones(db *sql.DB) {
+	stmt := `
+		DROP TABLE IF EXISTS trips_in_zone;
+	`
+	_, err := db.Exec(stmt)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	stmt2 := `
+		CREATE TABLE IF NOT EXISTS trips_in_zone AS (
+		SELECT trip_id, start_time, end_time, system_id, vehicle_type,
+		zones.stat_ref
+		FROM trips
+		JOIN zones
+		ON ST_DWithin(trips.end_location, zones.buffered_area, 0.0)
+		AND zones.zone_type = 'municipality'
+		);
+	`
+	_, err = db.Exec(stmt2)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
