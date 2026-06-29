@@ -2,13 +2,23 @@ package analyze
 
 import (
 	"database/sql"
-	"deelfietsdashboard-importer/cmd/batch_aggregation/util"
+	"deelfietsdashboard-importer/cmd/batch_aggregation/indicators"
 	"log"
 	"strconv"
 	"time"
 )
 
-func CountVehiclesInPublicSpaceForLongerThenXDays(db *sql.DB, measurementMoment time.Time, durationDays int) {
+func CountVehiclesInPublicSpaceForLongerThenXDays(db *sql.DB, measurementMoment time.Time, durationDays int, selected []indicators.Indicator) {
+	textID := "count_vehicles_in_public_space_longer_then_" + strconv.Itoa(durationDays) + "_days"
+	if !indicators.IsSelectedOnDate(selected, textID, measurementMoment) {
+		return
+	}
+
+	indicatorID, err := indicators.GetNumericIndicatorID(textID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	stmt := `
 	INSERT INTO moment_statistics
 	SELECT
@@ -26,9 +36,8 @@ func CountVehiclesInPublicSpaceForLongerThenXDays(db *sql.DB, measurementMoment 
 	AND zone_type = 'municipality'
 	GROUP BY stat_ref, system_id, vehicle_type;
 	`
-	_, err := db.Exec(stmt, measurementMoment, durationDays, util.GetNumericIndicatorID("count_vehicles_in_public_space_longer_then_"+strconv.Itoa(durationDays)+"_days"))
+	_, err = db.Exec(stmt, measurementMoment, durationDays, indicatorID)
 	if err != nil {
 		log.Fatal(err)
 	}
-
 }

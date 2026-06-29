@@ -2,12 +2,17 @@ package analyze
 
 import (
 	"database/sql"
+	"deelfietsdashboard-importer/cmd/batch_aggregation/indicators"
 	"deelfietsdashboard-importer/cmd/batch_aggregation/util"
 	"log"
 	"time"
 )
 
-func CountVehiclesInPublicSpaceOnDate(db *sql.DB, date time.Time) {
+func CountVehiclesInPublicSpaceOnDate(db *sql.DB, date time.Time, selected []indicators.Indicator) {
+	if !indicators.IsSelectedOnDate(selected, "count_vehicles_in_public_space", date) {
+		return
+	}
+
 	measurementMoments := util.GetDefaultMeasrurementMoments(date)
 	for moment_index, moment := range measurementMoments {
 		countVehiclesInPublicSpace(db, moment, moment_index)
@@ -15,6 +20,11 @@ func CountVehiclesInPublicSpaceOnDate(db *sql.DB, date time.Time) {
 }
 
 func countVehiclesInPublicSpace(db *sql.DB, timestamp time.Time, measurementMomentIndex int) {
+	indicatorID, err := indicators.GetNumericIndicatorID("count_vehicles_in_public_space")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	stmt := `
 		INSERT INTO moment_statistics
 		SELECT $1::DATE AS date,
@@ -29,13 +39,22 @@ func countVehiclesInPublicSpace(db *sql.DB, timestamp time.Time, measurementMome
 		AND zone_type = 'municipality'
 		GROUP BY stat_ref, system_id, vehicle_type;
 	`
-	_, err := db.Exec(stmt, timestamp, measurementMomentIndex, util.GetNumericIndicatorID("count_vehicles_in_public_space"))
+	_, err = db.Exec(stmt, timestamp, measurementMomentIndex, indicatorID)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func AggregateVehiclesInPublicSpacePerDay(db *sql.DB) {
+func AggregateVehiclesInPublicSpacePerDay(db *sql.DB, selected []indicators.Indicator) {
+	if !indicators.HasIndicator(selected, "count_vehicles_in_public_space") {
+		return
+	}
+
+	indicatorID, err := indicators.GetNumericIndicatorID("count_vehicles_in_public_space")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	stmt := `
 		INSERT INTO day_statistics
 		SELECT
@@ -49,7 +68,7 @@ func AggregateVehiclesInPublicSpacePerDay(db *sql.DB) {
 		WHERE indicator = $1
 		GROUP BY date, indicator, geometry_ref, system_id, vehicle_type;
 	`
-	_, err := db.Exec(stmt, util.GetNumericIndicatorID("count_vehicles_in_public_space"))
+	_, err = db.Exec(stmt, indicatorID)
 	if err != nil {
 		log.Fatal(err)
 	}

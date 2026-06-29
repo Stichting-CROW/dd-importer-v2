@@ -2,12 +2,17 @@ package analyze
 
 import (
 	"database/sql"
+	"deelfietsdashboard-importer/cmd/batch_aggregation/indicators"
 	"log"
 	"time"
 )
 
 // This could be improved by also checking at what times stops were opened / not opened.
-func CountWronglyParkedVehicles(db *sql.DB) {
+func CountWronglyParkedVehicles(db *sql.DB, startDate time.Time, endDate time.Time, selected []indicators.Indicator) {
+	if !indicators.IsSelectedForChunk(selected, "count_wrongly_parked_vehicles", startDate, endDate) {
+		return
+	}
+
 	log.Print("Counting wrongly parked vehicles...")
 	stmt := `
 		CREATE OR REPLACE TABLE wrongly_parked_vehicles_output AS
@@ -34,16 +39,24 @@ func CountWronglyParkedVehicles(db *sql.DB) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 }
 
-func AggregateWronglyParkedVehiclesPerDay(db *sql.DB, startDate time.Time, endDate time.Time) {
+func AggregateWronglyParkedVehiclesPerDay(db *sql.DB, startDate time.Time, endDate time.Time, selected []indicators.Indicator) {
+	if !indicators.IsSelectedForChunk(selected, "count_wrongly_parked_vehicles", startDate, endDate) {
+		return
+	}
+
+	indicatorID, err := indicators.GetNumericIndicatorID("count_wrongly_parked_vehicles")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	log.Print("Aggregating wrongly parked vehicles per day...")
-	_, err := db.Exec(`
+	_, err = db.Exec(`
 		INSERT INTO day_statistics
 		SELECT
 			d.day::DATE AS date,
-			6 as indicator,
+			$3 as indicator,
 			w.municipality AS geometry_ref,
 			w.system_id as system_id,
 			w.vehicle_type as vehicle_type,
@@ -60,7 +73,7 @@ func AggregateWronglyParkedVehiclesPerDay(db *sql.DB, startDate time.Time, endDa
 			w.system_id,
 			w.vehicle_type,
 			d.day;
-	`, startDate, endDate)
+	`, startDate, endDate, indicatorID)
 	if err != nil {
 		log.Fatal(err)
 	}
