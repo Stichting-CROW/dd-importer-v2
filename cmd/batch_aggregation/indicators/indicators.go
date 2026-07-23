@@ -66,14 +66,14 @@ var All = []Indicator{
 	},
 	{
 		ID:          9,
-		TextID:      "count_trips_per_day",
-		Description: "Het aantal ritten dat op een dag wordt afgerond in een gemeente.",
+		TextID:      "count_rentals_per_day",
+		Description: "Het aantal verhuringen dat op een dag wordt afgerond in een gemeente.",
 		FirstDay:    DefaultFirstDay,
 	},
 	{
 		ID:          10,
-		TextID:      "trips_per_vehicle_per_day",
-		Description: "Het aantal ritten per voertuig op een dag, berekend als count_trips_per_day gedeeld door count_vehicles_in_public_space.",
+		TextID:      "rentals_per_vehicle_per_day",
+		Description: "Het aantal verhuringen per voertuig op een dag, berekend als count_rentals_per_day gedeeld door count_vehicles_in_public_space.",
 		FirstDay:    DefaultFirstDay,
 	},
 	{

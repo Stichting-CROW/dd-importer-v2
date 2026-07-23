@@ -8,11 +8,11 @@ import (
 )
 
 func CountTripsPerDay(db *sql.DB, date time.Time, selected []indicators.Indicator) {
-	if !indicators.IsSelectedOnDate(selected, "count_trips_per_day", date) {
+	if !indicators.IsSelectedOnDate(selected, "count_rentals_per_day", date) {
 		return
 	}
 
-	indicatorID, err := indicators.GetNumericIndicatorID("count_trips_per_day")
+	indicatorID, err := indicators.GetNumericIndicatorID("count_rentals_per_day")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -39,16 +39,16 @@ func CountTripsPerDay(db *sql.DB, date time.Time, selected []indicators.Indicato
 }
 
 func ComputeTripsPerVehiclePerDay(db *sql.DB, selected []indicators.Indicator) {
-	if !indicators.HasIndicator(selected, "trips_per_vehicle_per_day") {
+	if !indicators.HasIndicator(selected, "rentals_per_vehicle_per_day") {
 		return
 	}
 
-	if !indicators.HasIndicator(selected, "count_trips_per_day") || !indicators.HasIndicator(selected, "count_vehicles_in_public_space") {
-		log.Print("trips_per_vehicle_per_day requires count_trips_per_day and count_vehicles_in_public_space to be selected")
+	if !indicators.HasIndicator(selected, "count_rentals_per_day") || !indicators.HasIndicator(selected, "count_vehicles_in_public_space") {
+		log.Print("rentals_per_vehicle_per_day requires count_rentals_per_day and count_vehicles_in_public_space to be selected")
 		return
 	}
 
-	tripsIndicatorID, err := indicators.GetNumericIndicatorID("count_trips_per_day")
+	tripsIndicatorID, err := indicators.GetNumericIndicatorID("count_rentals_per_day")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func ComputeTripsPerVehiclePerDay(db *sql.DB, selected []indicators.Indicator) {
 		log.Fatal(err)
 	}
 
-	resultIndicatorID, err := indicators.GetNumericIndicatorID("trips_per_vehicle_per_day")
+	resultIndicatorID, err := indicators.GetNumericIndicatorID("rentals_per_vehicle_per_day")
 	if err != nil {
 		log.Fatal(err)
 	}
