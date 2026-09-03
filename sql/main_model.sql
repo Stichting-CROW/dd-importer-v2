@@ -183,7 +183,7 @@ CREATE TABLE feeds (
      import_service_area                BOOLEAN DEFAULT FALSE,
      last_time_succesfully_imported     TIMESTAMPTZ,
      ignore_disruptions_in_feed_until   TIMESTAMPTZ,
-     remarks                            TEXT;
+     remarks                            TEXT,
      PRIMARY KEY (feed_id)
 );
 
