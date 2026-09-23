@@ -400,3 +400,20 @@ COMMENT ON TABLE feed_downtime IS 'Tracks feed downtime periods for vehicle impo
 -- Grant permissions (assuming same pattern as feeds table)
 GRANT SELECT, INSERT, UPDATE ON TABLE feed_downtime TO dashboarddeelmobiliteit;
 GRANT SELECT, USAGE ON SEQUENCE feed_downtime_downtime_id_seq TO dashboarddeelmobiliteit;
+
+-- Create mailing table
+CREATE TABLE IF NOT EXISTS mailing (
+    mailing_id                  SERIAL PRIMARY KEY,
+    subject                     TEXT NOT NULL,
+    body_markdown               TEXT NOT NULL,
+    filter_organisation_id      INT,
+    filter_core_group_only      BOOLEAN NOT NULL DEFAULT false,
+    filter_microhub_edit_only   BOOLEAN NOT NULL DEFAULT false,
+    is_test                     BOOLEAN NOT NULL DEFAULT false,
+    recipient_count             INT NOT NULL,
+    sent_by                     VARCHAR(255) NOT NULL,
+    sent_at                     TIMESTAMP NOT NULL DEFAULT now()
+);
+
+GRANT SELECT, INSERT, UPDATE ON TABLE mailing TO dashboarddeelmobiliteit;
+GRANT SELECT, USAGE ON SEQUENCE mailing_mailing_id_seq TO dashboarddeelmobiliteit;
