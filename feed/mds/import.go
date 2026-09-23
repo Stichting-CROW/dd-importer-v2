@@ -115,7 +115,7 @@ func convertMdsToVehicle(mdsVehicle MdsVehicle, systemID string) feed.Bike {
 		IsReserved:        isReserved,
 		IsDisabled:        isDisabled,
 		SystemID:          systemID,
-		InternalVehicleID: convertVehicleType(mdsVehicle.VehicleType, mdsVehicle.PropulsionTypes),
+		InternalVehicleID: ConvertVehicleType(mdsVehicle.VehicleType, mdsVehicle.PropulsionTypes),
 		VehicleType:       mdsVehicle.VehicleType,
 	}
 }
@@ -152,7 +152,7 @@ func getPropulsionType(propulsionTypes []string) string {
 
 }
 
-func convertVehicleType(vehicleType string, propulsionTypes []string) *int {
+func ConvertVehicleType(vehicleType string, propulsionTypes []string) *int {
 	vehicleTypePropulsionType := vehicleType
 	if len(propulsionTypes) > 0 {
 		vehicleTypePropulsionType = vehicleTypePropulsionType + ":" + getPropulsionType(propulsionTypes)

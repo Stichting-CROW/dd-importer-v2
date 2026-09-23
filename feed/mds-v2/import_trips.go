@@ -3,8 +3,8 @@ package mdstwo
 import (
 	"deelfietsdashboard-importer/feed"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"log"
 	"time"
 )
 
@@ -36,21 +36,25 @@ type Trips struct {
 	StartLocation StartLocation `json:"start_location"`
 	StartTime     int           `json:"start_time"`
 	TripID        string        `json:"trip_id"`
+	VehicleTypeID *int          `json:"-"`
 }
 
-func ImportTrips(feed *feed.Feed, timestamp string) []Trips {
+func ImportTrips(feed *feed.Feed, timestamp string) ([]Trips, error) {
 	feed.NumberOfPulls = feed.NumberOfPulls + 1
 	u := fmt.Sprintf("%s?end_time=%s", feed.Url, timestamp)
 	return getTrips(feed, u)
 }
 
-func getTrips(feed *feed.Feed, u string) []Trips {
+func getTrips(feed *feed.Feed, u string) ([]Trips, error) {
 	res := feed.DownloadDataAllowTimeout(u, time.Second*60)
 	if res == nil {
-		log.Fatalf("Something went wrong with importing data MDS")
+		return nil, errors.New("something went wrong with importing trips MDS")
 	}
+	defer res.Body.Close()
 	decoder := json.NewDecoder(res.Body)
 	var trips MDSTrips
-	decoder.Decode(&trips)
-	return trips.Trips
+	if err := decoder.Decode(&trips); err != nil {
+		return nil, err
+	}
+	return trips.Trips, nil
 }

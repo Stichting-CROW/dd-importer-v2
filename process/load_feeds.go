@@ -91,7 +91,7 @@ func queryTripFeeds(dataProcessor DataProcessor) []feed.Feed {
 		FROM feeds
 		LEFT JOIN vehicle_type
 		ON default_vehicle_type = vehicle_type_id
-		WHERE feeds.feed_type = 'mds-trips-v2'
+		WHERE feeds.feed_type IN ('mds-trips-v1', 'mds-trips-v2')
 		AND feeds.is_active = true
 		ORDER BY feed_id
 	`

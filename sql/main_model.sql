@@ -10,8 +10,8 @@ CREATE table trips (
     bike_id                 VARCHAR(255),
     start_location          GEOMETRY,
     end_location            GEOMETRY, 
-    start_time              TIMESTAMP,
-    end_time                TIMESTAMP,
+    start_time              TIMESTAMPTZ,
+    end_time                TIMESTAMPTZ,
     vehicle_type_id         INT,
     source_feed_id          INT,
     trip_source             trip_source DEFAULT 'vehicles',
@@ -41,6 +41,7 @@ CREATE TABLE park_events (
     check_in_sample_id      INT,
     check_out_sample_id     INT,
     vehicle_type_id         INT,
+    source_feed_id           INT,
     PRIMARY KEY(park_event_id)
 );
 
