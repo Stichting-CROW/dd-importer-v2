@@ -1,0 +1,17 @@
+-- Load the reviewed MDS trips feeds CSV into the feeds table.
+-- Run AFTER reviewing sql/mds_trips_feeds_new.csv.
+--
+-- The CSV is read from stdin, so it works from a Docker container with local
+-- file access. Note: `psql -f` reads COPY data from the script itself, not from
+-- piped stdin, so use one of the invocations below instead.
+--
+-- Local psql:
+--   psql "$DATABASE_URL" -c "$(cat sql/load_mds_trips_feeds.sql)" < sql/mds_trips_feeds_new.csv
+--
+-- Docker (pipe script + CSV into the container's stdin):
+--   { cat sql/load_mds_trips_feeds.sql; cat sql/mds_trips_feeds_new.csv; printf '\\.\n'; } \
+--       | docker exec -i <container> psql "$DATABASE_URL"
+--
+-- Docker (inline the statement, pipe only the CSV):
+--   cat sql/mds_trips_feeds_new.csv | docker exec -i <container> psql "$DATABASE_URL" -c "$(cat sql/load_mds_trips_feeds.sql)"
+COPY feeds (system_id, feed_url, feed_type, import_strategy, authentication, request_headers, default_vehicle_type, is_active, import_vehicles, import_service_area, remarks) FROM STDIN WITH (FORMAT CSV, HEADER);
