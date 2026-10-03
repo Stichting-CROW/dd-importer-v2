@@ -4,13 +4,22 @@ import (
 	"context"
 	"deelfietsdashboard-importer/feed"
 	mdstwo "deelfietsdashboard-importer/feed/mds-v2"
+	"fmt"
 	"log"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func storeTrips(feed *feed.Feed, trips []mdstwo.Trips, conn *pgx.Conn) error {
+func storeTrips(feed *feed.Feed, trips []mdstwo.Trips, pool *pgxpool.Pool) error {
+	// A trip row must always carry both the feed it came from (source_feed_id)
+	// and the operator it belongs to (system_id); never store one without the
+	// other.
+	if feed.ID == 0 || feed.OperatorID == "" {
+		return fmt.Errorf("refusing to store trips for %s: feed_id and system_id are required", feedLabel(*feed))
+	}
+
 	query := `
 	INSERT INTO trips
 	(system_id, bike_id, start_location, end_location, start_time, 
@@ -27,7 +36,7 @@ func storeTrips(feed *feed.Feed, trips []mdstwo.Trips, conn *pgx.Conn) error {
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		if attempt > 0 {
 			delay := baseDelay * time.Duration(1<<uint(attempt-1))
-			log.Printf("Retrying storing trips (attempt %d/%d) after %v", attempt+1, maxRetries, delay)
+			log.Printf("%s: retrying storing trips (attempt %d/%d) after %v", feedLabel(*feed), attempt+1, maxRetries, delay)
 			time.Sleep(delay)
 		}
 
@@ -52,12 +61,12 @@ func storeTrips(feed *feed.Feed, trips []mdstwo.Trips, conn *pgx.Conn) error {
 			})
 		}
 
-		err := conn.SendBatch(context.Background(), &batch).Close()
+		err := pool.SendBatch(context.Background(), &batch).Close()
 		if err == nil {
 			return nil
 		}
 		lastErr = err
-		log.Printf("Storing trips failed (attempt %d/%d): %s", attempt+1, maxRetries, err)
+		log.Printf("%s: storing trips failed (attempt %d/%d): %s", feedLabel(*feed), attempt+1, maxRetries, err)
 	}
 	return lastErr
 }
