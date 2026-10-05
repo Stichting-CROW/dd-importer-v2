@@ -28,6 +28,7 @@ func CountAvailableVehiclesInPublicSpace(db *sql.DB, date time.Time, selected []
 func countAvailableVehiclesAtMoment(db *sql.DB, date time.Time, moment time.Time, measurementMomentIndex int, indicatorID int) {
 	stmt := `
 		INSERT INTO moment_statistics
+			(date, measurement_moment, indicator, geometry_ref, system_id, vehicle_type, trip_source, value)
 		SELECT
 			$1::DATE AS date,
 			$2 AS measurement_moment,
@@ -35,17 +36,23 @@ func countAvailableVehiclesAtMoment(db *sql.DB, date time.Time, moment time.Time
 			geometry_ref,
 			system_id,
 			vehicle_type,
-			SUM(value) AS value
+			trip_source,
+			COUNT(*) AS value
 		FROM (
 			SELECT
-				stat_ref AS geometry_ref,
-				system_id,
-				vehicle_type,
-				COUNT(*) AS value
+				pez.stat_ref AS geometry_ref,
+				pez.system_id,
+				pez.vehicle_type,
+				s.trip_source
 			FROM park_events_in_zone pez
+			JOIN (
+				SELECT DISTINCT system_id, trip_source
+				FROM trips_in_zone
+				WHERE trip_source IS NOT NULL
+			) s ON s.system_id = pez.system_id
 			WHERE pez.start_time <= $4
 				AND (pez.end_time >= $4 OR pez.end_time IS NULL)
-				AND zone_type = 'municipality'
+				AND pez.zone_type = 'municipality'
 				AND NOT EXISTS (
 					SELECT 1
 					FROM non_operational_events noe
@@ -53,7 +60,6 @@ func countAvailableVehiclesAtMoment(db *sql.DB, date time.Time, moment time.Time
 						AND noe.start_time <= $4
 						AND (noe.end_time >= $4 OR noe.end_time IS NULL)
 				)
-			GROUP BY stat_ref, system_id, vehicle_type
 
 			UNION ALL
 
@@ -61,14 +67,13 @@ func countAvailableVehiclesAtMoment(db *sql.DB, date time.Time, moment time.Time
 				stat_ref AS geometry_ref,
 				system_id,
 				vehicle_type,
-				COUNT(*) AS value
+				trip_source
 			FROM trips_in_zone
 			WHERE start_time <= $4
 				AND end_time > $4
 				AND end_time < $1::DATE + INTERVAL '1 day'
-			GROUP BY stat_ref, system_id, vehicle_type
 		) q
-		GROUP BY geometry_ref, system_id, vehicle_type;
+		GROUP BY geometry_ref, system_id, vehicle_type, trip_source;
 	`
 
 	_, err := db.Exec(stmt, date.Format("2006-01-02"), measurementMomentIndex, indicatorID, moment)
@@ -89,16 +94,18 @@ func AggregateAvailableVehiclesPerDay(db *sql.DB, selected []indicators.Indicato
 
 	stmt := `
 		INSERT INTO day_statistics
+			(date, indicator, geometry_ref, system_id, vehicle_type, trip_source, value)
 		SELECT
 			date,
 			indicator,
 			geometry_ref,
 			system_id,
 			vehicle_type,
+			trip_source,
 			MAX(value) AS value
 		FROM moment_statistics
 		WHERE indicator = $1
-		GROUP BY date, indicator, geometry_ref, system_id, vehicle_type;
+		GROUP BY date, indicator, geometry_ref, system_id, vehicle_type, trip_source;
 	`
 
 	_, err = db.Exec(stmt, indicatorID)

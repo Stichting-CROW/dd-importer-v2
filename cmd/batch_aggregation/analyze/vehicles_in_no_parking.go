@@ -54,12 +54,14 @@ func AggregateWronglyParkedVehiclesPerDay(db *sql.DB, startDate time.Time, endDa
 	log.Print("Aggregating wrongly parked vehicles per day...")
 	_, err = db.Exec(`
 		INSERT INTO day_statistics
+			(date, indicator, geometry_ref, system_id, vehicle_type, trip_source, value)
 		SELECT
 			d.day::DATE AS date,
 			$3 as indicator,
 			w.municipality AS geometry_ref,
 			w.system_id as system_id,
 			w.vehicle_type as vehicle_type,
+			NULL AS trip_source,
 			COUNT(*) AS value
 		FROM wrongly_parked_vehicles_output w
 		CROSS JOIN generate_series(

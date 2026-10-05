@@ -28,6 +28,7 @@ func countNonOperationalVehiclesLongerThan(db *sql.DB, measurementMoment time.Ti
 
 	stmt := fmt.Sprintf(`
 		INSERT INTO moment_statistics
+			(date, measurement_moment, indicator, geometry_ref, system_id, vehicle_type, trip_source, value)
 		SELECT
 			$1::DATE AS date,
 			0 AS measurement_moment,
@@ -35,6 +36,7 @@ func countNonOperationalVehiclesLongerThan(db *sql.DB, measurementMoment time.Ti
 			stat_ref AS geometry_ref,
 			system_id,
 			vehicle_type,
+			NULL AS trip_source,
 			COUNT(*) AS value
 		FROM park_events_in_zone pez
 		JOIN non_operational_events noe

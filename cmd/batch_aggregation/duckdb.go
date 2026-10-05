@@ -42,8 +42,8 @@ func initDuckDB() *sql.DB {
 		geometry_ref       VARCHAR NOT NULL,
 		system_id          VARCHAR NOT NULL,
 		vehicle_type       VARCHAR NOT NULL,
-		value              NUMERIC NOT NULL,
-		PRIMARY KEY (date, measurement_moment, indicator, geometry_ref, system_id, vehicle_type)
+		trip_source        VARCHAR,
+		value              NUMERIC NOT NULL
 	);
    `
 	_, err = db.Exec(stmt)
@@ -59,8 +59,8 @@ func initDuckDB() *sql.DB {
 		geometry_ref VARCHAR NOT NULL,
 		system_id VARCHAR NOT NULL,
 		vehicle_type VARCHAR NOT NULL,
-		value NUMERIC NOT NULL,
-		PRIMARY KEY (date, indicator, geometry_ref, system_id, vehicle_type)
+		trip_source VARCHAR,
+		value NUMERIC NOT NULL
 	);
 	`
 
@@ -202,11 +202,12 @@ func loadTripsInBetween(db *sql.DB, startDate time.Time, endDate time.Time) {
 	stmt = `
 	CREATE TABLE IF NOT EXISTS trips AS
 	SELECT trip_id, ST_GeomFromWKB(start_location) AS start_location, ST_GeomFromWKB(end_location) AS end_location,
-	start_time, end_time, system_id, vehicle_type
+	start_time, end_time, system_id, vehicle_type, trip_source
 	FROM postgres_query('postgres_db', 
 		'SELECT trip_id, ST_AsBinary(start_location) AS start_location, ST_AsBinary(end_location) AS end_location,
 		start_time, end_time, trips.system_id,
-		CONCAT(form_factor, '':'', propulsion_type) AS vehicle_type
+		CONCAT(form_factor, '':'', propulsion_type) AS vehicle_type,
+		trips.trip_source::text AS trip_source
 		FROM trips
 		JOIN vehicle_type
 		USING(vehicle_type_id)

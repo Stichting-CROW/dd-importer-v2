@@ -19,17 +19,19 @@ func CountTripsPerDay(db *sql.DB, date time.Time, selected []indicators.Indicato
 
 	stmt := `
 		INSERT INTO day_statistics
+			(date, indicator, geometry_ref, system_id, vehicle_type, trip_source, value)
 		SELECT
 			$1::DATE AS date,
 			$2 AS indicator,
 			stat_ref AS geometry_ref,
 			system_id,
 			vehicle_type,
+			trip_source,
 			COUNT(*) AS value
 		FROM trips_in_zone
 		WHERE end_time >= $1
 			AND end_time < $1 + INTERVAL '1 day'
-		GROUP BY stat_ref, system_id, vehicle_type;
+		GROUP BY stat_ref, system_id, vehicle_type, trip_source;
 	`
 
 	_, err = db.Exec(stmt, date, indicatorID)
@@ -65,18 +67,25 @@ func ComputeTripsPerVehiclePerDay(db *sql.DB, selected []indicators.Indicator) {
 
 	stmt := `
 		INSERT INTO day_statistics
+			(date, indicator, geometry_ref, system_id, vehicle_type, trip_source, value)
 		SELECT
 			t.date,
 			$1 AS indicator,
 			t.geometry_ref,
 			t.system_id,
 			t.vehicle_type,
+			t.trip_source,
 			t.value / NULLIF(v.value, 0) AS value
 		FROM day_statistics t
 		JOIN day_statistics v
-			USING (date, geometry_ref, system_id, vehicle_type)
+			ON t.date = v.date
+			AND t.geometry_ref = v.geometry_ref
+			AND t.system_id = v.system_id
+			AND t.vehicle_type = v.vehicle_type
 		WHERE t.indicator = $2
-			AND v.indicator = $3;
+			AND v.indicator = $3
+			AND t.trip_source IS NOT NULL
+			AND v.trip_source IS NULL;
 	`
 
 	_, err = db.Exec(stmt, resultIndicatorID, tripsIndicatorID, vehiclesIndicatorID)

@@ -44,7 +44,7 @@ func FindTripIntersectionsWithZones(db *sql.DB) {
 
 	stmt2 := `
 		CREATE TABLE IF NOT EXISTS trips_in_zone AS (
-		SELECT trip_id, start_time, end_time, system_id, vehicle_type,
+		SELECT trip_id, start_time, end_time, system_id, vehicle_type, trip_source,
 		zones.stat_ref
 		FROM trips
 		JOIN zones

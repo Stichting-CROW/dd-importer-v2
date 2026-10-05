@@ -21,6 +21,7 @@ func CountVehiclesInPublicSpaceForLongerThenXDays(db *sql.DB, measurementMoment 
 
 	stmt := `
 	INSERT INTO moment_statistics
+		(date, measurement_moment, indicator, geometry_ref, system_id, vehicle_type, trip_source, value)
 	SELECT
 	$1::DATE AS date,
     0 AS measurement_moment,
@@ -28,6 +29,7 @@ func CountVehiclesInPublicSpaceForLongerThenXDays(db *sql.DB, measurementMoment 
     stat_ref AS geometry_ref,
     system_id,
     vehicle_type,
+    NULL AS trip_source,
     COUNT(*) AS value
 	FROM park_events_in_zone
 	WHERE start_time <= $1

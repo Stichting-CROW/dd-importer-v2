@@ -28,12 +28,14 @@ func countVehiclesInPublicSpace(db *sql.DB, timestamp time.Time, measurementMome
 
 	stmt := `
 		INSERT INTO moment_statistics
+			(date, measurement_moment, indicator, geometry_ref, system_id, vehicle_type, trip_source, value)
 		SELECT $1::DATE AS date,
 			$2 AS measurement_moment,
 			$3 AS indicator,
 			stat_ref,
 			system_id,
 			vehicle_type,
+			NULL AS trip_source,
 			COUNT(*) AS value
 		FROM park_events_in_zone
 		WHERE start_time <= $1 AND (end_time >= $1 OR end_time IS NULL)
@@ -58,16 +60,18 @@ func AggregateVehiclesInPublicSpacePerDay(db *sql.DB, selected []indicators.Indi
 
 	stmt := `
 		INSERT INTO day_statistics
+			(date, indicator, geometry_ref, system_id, vehicle_type, trip_source, value)
 		SELECT
 			date,
 			indicator,
 			geometry_ref,
 			system_id,
 			vehicle_type,
+			trip_source,
 			MAX(value) AS value
 		FROM moment_statistics
 		WHERE indicator = $1
-		GROUP BY date, indicator, geometry_ref, system_id, vehicle_type;
+		GROUP BY date, indicator, geometry_ref, system_id, vehicle_type, trip_source;
 	`
 	_, err = db.Exec(stmt, indicatorID)
 	if err != nil {

@@ -131,6 +131,7 @@ func executeRun(recalculate bool, selected []indicators.Indicator, from time.Tim
 	runStart, runEnd := determineDateRange(recalculate, selected, from, to, pgConn)
 	if runStart.After(runEnd) {
 		log.Print("Nothing to calculate for the selected indicators and date range.")
+		updateMaterializedViewsAndIndexes(pgConn)
 		return nil
 	}
 
@@ -141,8 +142,116 @@ func executeRun(recalculate bool, selected []indicators.Indicator, from time.Tim
 
 	aggregateAndStoreData(dConn, runStart, runEnd, selected)
 
+	updateMaterializedViewsAndIndexes(pgConn)
+
 	log.Printf("Done analyzing data, took %s", time.Since(startTime))
 	return nil
+}
+
+func updateMaterializedViewsAndIndexes(pgConn *pgx.Conn) {
+	ctx := context.Background()
+
+	log.Print("Start refresh materialized view park_event_on_date")
+	if _, err := pgConn.Exec(ctx, "REFRESH MATERIALIZED VIEW park_event_on_date"); err != nil {
+		log.Fatalf("Failed to refresh materialized view park_event_on_date: %v", err)
+	}
+	log.Print("Finished refresh materialized view park_event_on_date")
+
+	log.Print("Start refresh materialized view trip_on_date")
+	if _, err := pgConn.Exec(ctx, "REFRESH MATERIALIZED VIEW trip_on_date"); err != nil {
+		log.Fatalf("Failed to refresh materialized view trip_on_date: %v", err)
+	}
+	log.Print("Finished refresh materialized view trip_on_date")
+
+	log.Print("DROP INDEX CONCURRENTLY IF EXISTS idx_park_events_location_recent_gist")
+	if _, err := pgConn.Exec(ctx, "DROP INDEX CONCURRENTLY IF EXISTS idx_park_events_location_recent_gist;"); err != nil {
+		log.Fatalf("Failed to drop index idx_park_events_location_recent_gist: %v", err)
+	}
+	log.Print("Finished DROP INDEX idx_park_events_location_recent_gist")
+
+	log.Print("DROP INDEX CONCURRENTLY IF EXISTS park_events_ended_less_than_three_days_ago")
+	if _, err := pgConn.Exec(ctx, "DROP INDEX CONCURRENTLY IF EXISTS park_events_ended_less_than_three_days_ago;"); err != nil {
+		log.Fatalf("Failed to drop index park_events_ended_less_than_three_days_ago: %v", err)
+	}
+	log.Print("Finished DROP INDEX park_events_ended_less_than_three_days_ago")
+
+	dateThreeDaysAgo := time.Now().UTC().AddDate(0, 0, -3).Format("2006-01-02")
+	log.Printf("Create new index on park_events starting from_date: %s", dateThreeDaysAgo)
+
+	stmt := fmt.Sprintf(`
+		CREATE INDEX CONCURRENTLY park_events_ended_less_than_three_days_ago
+		ON park_events (end_time)
+		WHERE end_time >= '%s' OR end_time IS NULL;
+	`, dateThreeDaysAgo)
+	if _, err := pgConn.Exec(ctx, stmt); err != nil {
+		log.Fatalf("Failed to create index park_events_ended_less_than_three_days_ago: %v", err)
+	}
+
+	stmt = fmt.Sprintf(`
+		CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_park_events_location_recent_gist
+		ON park_events
+		USING gist (location)
+		WHERE end_time >= '%s' OR end_time IS NULL;
+	`, dateThreeDaysAgo)
+	if _, err := pgConn.Exec(ctx, stmt); err != nil {
+		log.Fatalf("Failed to create index idx_park_events_location_recent_gist: %v", err)
+	}
+
+	tripIndexes := []string{
+		"idx_trips_bike_time_recent",
+		"trips_ended_less_than_three_days_ago",
+		"idx_trips_recent_start_gist",
+		"idx_trips_recent_end_gist",
+	}
+	for _, index := range tripIndexes {
+		log.Printf("DROP INDEX CONCURRENTLY IF EXISTS %s", index)
+		if _, err := pgConn.Exec(ctx, "DROP INDEX CONCURRENTLY IF EXISTS "+index+";"); err != nil {
+			log.Fatalf("Failed to drop index %s: %v", index, err)
+		}
+		log.Printf("Finished DROP INDEX %s", index)
+	}
+
+	log.Printf("Create new indexes on trips starting from_date: %s", dateThreeDaysAgo)
+
+	stmt = fmt.Sprintf(`
+		CREATE INDEX CONCURRENTLY trips_ended_less_than_three_days_ago
+		ON trips (end_time)
+		WHERE end_time >= '%s' OR end_time IS NULL;
+	`, dateThreeDaysAgo)
+	if _, err := pgConn.Exec(ctx, stmt); err != nil {
+		log.Fatalf("Failed to create index trips_ended_less_than_three_days_ago: %v", err)
+	}
+
+	stmt = fmt.Sprintf(`
+		CREATE INDEX CONCURRENTLY idx_trips_recent_start_gist
+		ON trips
+		USING gist (start_location)
+		WHERE end_time >= '%s' OR end_time IS NULL;
+	`, dateThreeDaysAgo)
+	if _, err := pgConn.Exec(ctx, stmt); err != nil {
+		log.Fatalf("Failed to create index idx_trips_recent_start_gist: %v", err)
+	}
+
+	stmt = fmt.Sprintf(`
+		CREATE INDEX CONCURRENTLY idx_trips_recent_end_gist
+		ON trips
+		USING gist (end_location)
+		WHERE end_time >= '%s' OR end_time IS NULL;
+	`, dateThreeDaysAgo)
+	if _, err := pgConn.Exec(ctx, stmt); err != nil {
+		log.Fatalf("Failed to create index idx_trips_recent_end_gist: %v", err)
+	}
+
+	stmt = fmt.Sprintf(`
+		CREATE INDEX CONCURRENTLY idx_trips_bike_time_recent
+		ON trips (bike_id, start_time)
+		WHERE start_time >= '%s';
+	`, dateThreeDaysAgo)
+	if _, err := pgConn.Exec(ctx, stmt); err != nil {
+		log.Fatalf("Failed to create index idx_trips_bike_time_recent: %v", err)
+	}
+
+	log.Print("Finished creating indexes")
 }
 
 func determineDateRange(recalculate bool, selected []indicators.Indicator, from time.Time, to time.Time, pgConn *pgx.Conn) (time.Time, time.Time) {
@@ -156,7 +265,7 @@ func determineDateRange(recalculate bool, selected []indicators.Indicator, from 
 	if to.Year() <= 1 {
 		to = time.Now().Local().AddDate(0, 0, -1)
 	}
-	runStart := to
+	runStart := requestedStart
 
 	for _, indicator := range selected {
 		effectiveStart := indicators.EffectiveStartDate(indicator, requestedStart)
@@ -294,6 +403,7 @@ func writeToPostgres(db *sql.DB) {
 	log.Print("Writing results to Postgres...")
 	stmt := `
 	INSERT INTO postgres_db.moment_statistics
+		(date, measurement_moment, indicator, geometry_ref, system_id, vehicle_type, trip_source, value)
 	SELECT
 		date,
 		measurement_moment,
@@ -301,6 +411,7 @@ func writeToPostgres(db *sql.DB) {
 		geometry_ref,
 		system_id,
 		vehicle_type,
+		trip_source,
 		value
 	FROM moment_statistics;
 	`
@@ -312,12 +423,14 @@ func writeToPostgres(db *sql.DB) {
 
 	stmt = `
 	INSERT INTO postgres_db.day_statistics
+		(date, indicator, geometry_ref, system_id, vehicle_type, trip_source, value)
 	SELECT
 		date,
 		indicator,
 		geometry_ref,
 		system_id,
 		vehicle_type,
+		trip_source,
 		value
 	FROM day_statistics;
 	`
