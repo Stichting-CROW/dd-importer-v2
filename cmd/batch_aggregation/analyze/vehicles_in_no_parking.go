@@ -30,9 +30,10 @@ func CountWronglyParkedVehicles(db *sql.DB, startDate time.Time, endDate time.Ti
 		AND zones.effective_date <= park_events_in_zone.start_time and (zones.retire_date IS NULL OR zones.retire_date > park_events_in_zone.start_time)
 		AND split_part(vehicle_type, ':', 1) IN affected_modalities
 		)
-		SELECT st_y(location), st_x(location), system_id, vehicle_type, start_time, end_time, municipality
+		SELECT park_event_id, st_y(location), st_x(location), system_id, vehicle_type, start_time, end_time, municipality
 		FROM park_events_in_zone
-		WHERE park_event_id IN (SELECT park_event_id FROM wrongly_parked_vehicles);
+		WHERE park_event_id IN (SELECT park_event_id FROM wrongly_parked_vehicles)
+		AND municipality IS NOT NULL;
 	`
 
 	_, err := db.Query(stmt)
@@ -62,7 +63,7 @@ func AggregateWronglyParkedVehiclesPerDay(db *sql.DB, startDate time.Time, endDa
 			w.system_id as system_id,
 			w.vehicle_type as vehicle_type,
 			NULL AS trip_source,
-			COUNT(*) AS value
+			COUNT(DISTINCT w.park_event_id) AS value
 		FROM wrongly_parked_vehicles_output w
 		CROSS JOIN generate_series(
 			date_trunc('day', w.start_time),
