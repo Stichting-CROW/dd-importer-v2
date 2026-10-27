@@ -1,2 +1,10 @@
-*.git
-*.env
+.git
+.env
+.env-*
+.dev.env
+*.pem
+*.sql
+sql/
+scripts/
+output/
+cmd/trip_importer/trips_october_*

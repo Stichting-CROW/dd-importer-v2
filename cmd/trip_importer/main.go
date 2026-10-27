@@ -17,9 +17,30 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// importLag is how long after an hour finishes we wait before importing it, so
-// providers have time to finalize their trip data.
-const importLag = time.Hour
+const (
+	// importLag is how long after an hour finishes we wait before importing it, so
+	// providers have time to finalize their trip data.
+	importLag = time.Hour
+
+	// defaultImportStartDate is the earliest hour to backfill for feeds without
+	// imported trips yet.
+	defaultImportStartDate = "2025-01-01T00:00:00Z"
+)
+
+// importStartDate can be overridden with TRIP_IMPORT_START_DATE (RFC3339).
+var importStartDate = parseImportStartDate()
+
+func parseImportStartDate() time.Time {
+	raw := os.Getenv("TRIP_IMPORT_START_DATE")
+	if raw == "" {
+		raw = defaultImportStartDate
+	}
+	start, err := time.Parse(time.RFC3339, raw)
+	if err != nil {
+		log.Fatalf("Invalid TRIP_IMPORT_START_DATE %q: %v", raw, err)
+	}
+	return start.UTC()
+}
 
 // feedLabel identifies a feed in logs and errors. A feed is always identified
 // by both its feed_id and its system_id, so they are reported together.
@@ -57,10 +78,8 @@ func getLatestImportTime(feed feed.Feed, db *pgxpool.Pool) time.Time {
 		"feed_id": feed.ID,
 	}).Scan(&latestImportTime)
 
-	// import trips after 2026-10-01
-	minimalStartDate := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
-	if minimalStartDate.After(latestImportTime) {
-		return minimalStartDate
+	if importStartDate.After(latestImportTime) {
+		return importStartDate
 	}
 	latestImportTime = latestImportTime.Add(1 * time.Hour)
 	latestImportTime = latestImportTime.Truncate(time.Hour)

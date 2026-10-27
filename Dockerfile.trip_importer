@@ -1,0 +1,25 @@
+############################
+# STEP 1: build binary
+############################
+FROM golang:1.25-alpine AS builder
+
+RUN apk add --no-cache ca-certificates git
+
+WORKDIR /src
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o /out/trip-importer ./cmd/trip_importer
+
+############################
+# STEP 2: runtime image
+############################
+FROM alpine:3.22
+
+RUN apk add --no-cache ca-certificates tzdata
+
+COPY --from=builder /out/trip-importer /usr/local/bin/trip-importer
+
+ENTRYPOINT ["/usr/local/bin/trip-importer"]
