@@ -61,10 +61,10 @@ func ImportTrips(feed *feed.Feed, timestamp string) ([]Trips, error) {
 	}
 	defer res.Body.Close()
 
-	// Providers return 404 for hours they have no trips for; that is not an
+	// Providers return 404/410 for hours they have no trips for; that is not an
 	// error, so treat it as an empty result for every feed.
-	if status == http.StatusNotFound {
-		log.Printf("[%s_%d] no trips for %s (404), continuing", feed.OperatorID, feed.ID, u)
+	if status == http.StatusNotFound || status == http.StatusGone {
+		log.Printf("[%s_%d] no trips for %s (%d), continuing", feed.OperatorID, feed.ID, u, status)
 		return nil, nil
 	}
 	if status != http.StatusOK {
