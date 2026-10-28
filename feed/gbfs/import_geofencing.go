@@ -5,15 +5,17 @@ import (
 	"encoding/json"
 )
 
+type Rule struct {
+	RideStartAllowed   *bool `json:"ride_start_allowed"`
+	RideEndAllowed     *bool `json:"ride_end_allowed"`
+	RideThroughAllowed *bool `json:"ride_through_allowed"`
+}
+
 type GBFSGeofencing struct {
 	OperatorID string
 	Data       struct {
 		GeofencingZones json.RawMessage `json:"geofencing_zones"`
-		GlobalRules     []struct {
-			RideEndAllowed     bool `json:"ride_end_allowed"`
-			RideStartAllowed   bool `json:"ride_start_allowed"`
-			RideThroughAllowed bool `json:"ride_through_allowed"`
-		} `json:"global_rules"`
+		GlobalRules     []Rule          `json:"global_rules"`
 	} `json:"data"`
 	LastUpdated int    `json:"last_updated"`
 	TTL         int    `json:"ttl"`

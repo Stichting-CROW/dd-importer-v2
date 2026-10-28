@@ -83,22 +83,51 @@ type Geofence struct {
 	Municipalities []string
 }
 
-type Rule struct {
-	RideEndAllowed     bool `json:"ride_end_allowed"`
-	RideStartAllowed   bool `json:"ride_start_allowed"`
-	RideThroughAllowed bool `json:"ride_through_allowed"`
+type effectiveRules struct {
+	RideStartAllowed   bool
+	RideEndAllowed     bool
+	RideThroughAllowed bool
 }
 
-func isDisallowedRule(r Rule) bool {
-	return !r.RideEndAllowed &&
-		!r.RideStartAllowed &&
-		!r.RideThroughAllowed
+func defaultRules() effectiveRules {
+	return effectiveRules{
+		RideStartAllowed:   true,
+		RideEndAllowed:     true,
+		RideThroughAllowed: true,
+	}
 }
 
-func shouldKeepFeature(f *geojson.Feature) bool {
+func (r *effectiveRules) apply(rule gbfs.Rule) {
+	if rule.RideStartAllowed != nil {
+		r.RideStartAllowed = *rule.RideStartAllowed
+	}
+	if rule.RideEndAllowed != nil {
+		r.RideEndAllowed = *rule.RideEndAllowed
+	}
+	if rule.RideThroughAllowed != nil {
+		r.RideThroughAllowed = *rule.RideThroughAllowed
+	}
+}
+
+func resolveRules(globalRules []gbfs.Rule, featureRules []gbfs.Rule) effectiveRules {
+	rules := defaultRules()
+	for _, rule := range globalRules {
+		rules.apply(rule)
+	}
+	for _, rule := range featureRules {
+		rules.apply(rule)
+	}
+	return rules
+}
+
+func isDisallowedRule(r effectiveRules) bool {
+	return !r.RideStartAllowed || !r.RideEndAllowed
+}
+
+func shouldKeepFeature(f *geojson.Feature, globalRules []gbfs.Rule) bool {
 	rulesRaw, ok := f.Properties["rules"]
 	if !ok {
-		return true
+		return !isDisallowedRule(resolveRules(globalRules, nil))
 	}
 
 	rules, err := parseRules(rulesRaw)
@@ -106,22 +135,16 @@ func shouldKeepFeature(f *geojson.Feature) bool {
 		return true
 	}
 
-	for _, rule := range rules {
-		if !isDisallowedRule(rule) {
-			return true
-		}
-	}
-
-	return false
+	return !isDisallowedRule(resolveRules(globalRules, rules))
 }
 
-func parseRules(v interface{}) ([]Rule, error) {
+func parseRules(v interface{}) ([]gbfs.Rule, error) {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return nil, err
 	}
 
-	var rules []Rule
+	var rules []gbfs.Rule
 	if err := json.Unmarshal(b, &rules); err != nil {
 		return nil, err
 	}
@@ -129,11 +152,11 @@ func parseRules(v interface{}) ([]Rule, error) {
 	return rules, nil
 }
 
-func filterFeaturesThatBlockBikes(features geojson.FeatureCollection) []*geojson.Feature {
+func filterFeaturesThatBlockBikes(features geojson.FeatureCollection, globalRules []gbfs.Rule) []*geojson.Feature {
 	filtered := make([]*geojson.Feature, 0, len(features.Features))
 
 	for _, f := range features.Features {
-		if shouldKeepFeature(f) {
+		if shouldKeepFeature(f, globalRules) {
 			filtered = append(filtered, f)
 		}
 	}
@@ -145,7 +168,6 @@ func (dataProcessor DataProcessor) processGeofence(feed gbfs.GBFSGeofencing) []G
 	var featureCollection geojson.FeatureCollection
 
 	err := featureCollection.UnmarshalJSON(feed.Data.GeofencingZones)
-	featureCollection.Features = filterFeaturesThatBlockBikes(featureCollection)
 
 	if err != nil && err.Error() == "geom: stride mismatch, got 3, want 2" {
 		log.Printf("Removing third coordinate from GeoJSON for feed %s", feed.OperatorID)
@@ -154,11 +176,18 @@ func (dataProcessor DataProcessor) processGeofence(feed gbfs.GBFSGeofencing) []G
 			log.Printf("Error removing third coordinate: %v", err)
 			return nil
 		}
-		featureCollection.UnmarshalJSON(fixedGeoJSON)
+		if err := featureCollection.UnmarshalJSON(fixedGeoJSON); err != nil {
+			log.Print("Other problem with deserializing FeatureCollection")
+			log.Print(err)
+			return nil
+		}
 	} else if err != nil {
 		log.Print("Other problem with deserializing FeatureCollection")
 		log.Print(err)
+		return nil
 	}
+
+	featureCollection.Features = filterFeaturesThatBlockBikes(featureCollection, feed.Data.GlobalRules)
 
 	var geofences []Geofence
 	log.Printf("Lengte array: %d %s", len(featureCollection.Features), feed.OperatorID)
