@@ -124,6 +124,15 @@ func isDisallowedRule(r effectiveRules) bool {
 	return !r.RideStartAllowed || !r.RideEndAllowed
 }
 
+func hasMaximumSpeed(rules []gbfs.Rule) bool {
+	for _, rule := range rules {
+		if rule.MaximumSpeed != nil {
+			return true
+		}
+	}
+	return false
+}
+
 func shouldKeepFeature(f *geojson.Feature, globalRules []gbfs.Rule) bool {
 	rulesRaw, ok := f.Properties["rules"]
 	if !ok {
@@ -133,6 +142,10 @@ func shouldKeepFeature(f *geojson.Feature, globalRules []gbfs.Rule) bool {
 	rules, err := parseRules(rulesRaw)
 	if err != nil {
 		return true
+	}
+
+	if hasMaximumSpeed(rules) {
+		return false
 	}
 
 	return !isDisallowedRule(resolveRules(globalRules, rules))
