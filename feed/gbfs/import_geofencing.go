@@ -9,7 +9,7 @@ type Rule struct {
 	RideStartAllowed   *bool    `json:"ride_start_allowed"`
 	RideEndAllowed     *bool    `json:"ride_end_allowed"`
 	RideThroughAllowed *bool    `json:"ride_through_allowed"`
-	MaximumSpeed       *float64 `json:"maximum_speed"`
+	MaximumSpeed       *float64 `json:"maximum_speed_kph"`
 }
 
 type GBFSGeofencing struct {
