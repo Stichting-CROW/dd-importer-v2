@@ -78,8 +78,12 @@ func getLatestImportTime(feed feed.Feed, db *pgxpool.Pool) time.Time {
 		"feed_id": feed.ID,
 	}).Scan(&latestImportTime)
 
-	if importStartDate.After(latestImportTime) {
-		return importStartDate
+	startDate := importStartDate
+	if feed.TripImportStartDate != nil {
+		startDate = feed.TripImportStartDate.UTC()
+	}
+	if startDate.After(latestImportTime) {
+		return startDate
 	}
 	latestImportTime = latestImportTime.Add(1 * time.Hour)
 	latestImportTime = latestImportTime.Truncate(time.Hour)

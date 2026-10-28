@@ -38,6 +38,7 @@ type Feed struct {
 	OAuth2CredentialsDott      auth.OauthCredentialsDott
 	AuthenticationType         string
 	LastTimeUpdated            time.Time
+	TripImportStartDate        *time.Time
 }
 
 // LogZeroRecords logs the full raw response for a request that returned no

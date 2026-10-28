@@ -61,8 +61,9 @@ func ImportTrips(feed *feed.Feed, timestamp string) ([]Trips, error) {
 	}
 	defer res.Body.Close()
 
-	// Bolt returns 404 for hours it has no trips for; that is not an error.
-	if status == http.StatusNotFound && feed.OperatorID == "bolt" {
+	// Providers return 404 for hours they have no trips for; that is not an
+	// error, so treat it as an empty result for every feed.
+	if status == http.StatusNotFound {
 		log.Printf("[%s_%d] no trips for %s (404), continuing", feed.OperatorID, feed.ID, u)
 		return nil, nil
 	}

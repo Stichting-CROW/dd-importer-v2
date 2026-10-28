@@ -47,7 +47,7 @@ func lookUpFeedID(oldData []feed.Feed, ID int) feed.Feed {
 func queryNewFeeds(db *sqlx.DB) []feed.Feed {
 	stmt := `SELECT feed_id, feeds.system_id, feed_url, 
 		feed_type, import_strategy, authentication, request_headers,
-		default_vehicle_type, form_factor
+		default_vehicle_type, form_factor, trip_import_start_date
 		FROM feeds
 		LEFT JOIN vehicle_type
 		ON default_vehicle_type = vehicle_type_id
@@ -68,7 +68,7 @@ func queryNewFeeds(db *sqlx.DB) []feed.Feed {
 func queryGeofencingFeeds(dataProcessor DataProcessor) []feed.Feed {
 	stmt := `SELECT feed_id, feeds.system_id, feed_url, 
 		feed_type, import_strategy, authentication, request_headers,
-		default_vehicle_type, form_factor
+		default_vehicle_type, form_factor, trip_import_start_date
 		FROM feeds
 		LEFT JOIN vehicle_type
 		ON default_vehicle_type = vehicle_type_id
@@ -87,7 +87,7 @@ func queryGeofencingFeeds(dataProcessor DataProcessor) []feed.Feed {
 func queryTripFeeds(dataProcessor DataProcessor) []feed.Feed {
 	stmt := `SELECT feed_id, feeds.system_id, feed_url, 
 		feed_type, import_strategy, authentication, request_headers,
-		default_vehicle_type, form_factor
+		default_vehicle_type, form_factor, trip_import_start_date
 		FROM feeds
 		LEFT JOIN vehicle_type
 		ON default_vehicle_type = vehicle_type_id
@@ -112,7 +112,8 @@ func serializeFeeds(rows *sqlx.Rows) []feed.Feed {
 		err := rows.Scan(&newFeed.ID, &newFeed.OperatorID,
 			&newFeed.Url, &newFeed.Type, &newFeed.ImportStrategy,
 			&authentication, &requestHeaders,
-			&newFeed.DefaultVehicleType, &newFeed.DefaultFormFactor)
+			&newFeed.DefaultVehicleType, &newFeed.DefaultFormFactor,
+			&newFeed.TripImportStartDate)
 		if err != nil {
 			log.Print(err)
 		}

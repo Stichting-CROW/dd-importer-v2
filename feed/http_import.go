@@ -61,7 +61,7 @@ func (feed *Feed) DownloadDataTripsWithRetry(url string, seconds time.Duration) 
 			continue
 		}
 
-		if status != http.StatusOK {
+		if status != http.StatusOK && status != http.StatusNotFound {
 			log.Printf("[%s_%d] Loading data from %s not possible. Status code: %d", feed.OperatorID, feed.ID, url, status)
 		}
 		return res, status
