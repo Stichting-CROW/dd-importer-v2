@@ -2,60 +2,34 @@ package main
 
 import (
 	"database/sql"
-	"deelfietsdashboard-importer/cmd/batch_aggregation/analyze"
 	"deelfietsdashboard-importer/cmd/batch_aggregation/indicators"
 	"log"
 	"time"
 )
 
-func computeMonthlyRentalStatistics(db *sql.DB, startDate time.Time, endDate time.Time, selected []indicators.Indicator) {
-	distanceSelected := indicators.HasIndicator(selected, "count_ended_rentals_by_distance_and_time_period")
-	durationSelected := indicators.HasIndicator(selected, "count_ended_rentals_by_duration_and_time_period")
-	realDistanceSelected := indicators.HasIndicator(selected, "count_ended_rentals_by_real_distance_and_time_period")
-
-	if !distanceSelected && !durationSelected && !realDistanceSelected {
-		return
+func computeMonthlyStatisticsForMonth(db *sql.DB, month time.Time, selected []indicators.Indicator) {
+	if indicators.HasIndicator(selected, "count_ended_rentals_by_distance_and_time_period") {
+		indicatorID, err := indicators.GetNumericIndicatorID("count_ended_rentals_by_distance_and_time_period")
+		if err != nil {
+			log.Fatal(err)
+		}
+		insertMonthlyDistanceStatistics(db, month, indicatorID)
 	}
 
-	distanceIndicatorID, err := indicators.GetNumericIndicatorID("count_ended_rentals_by_distance_and_time_period")
-	if err != nil {
-		log.Fatal(err)
+	if indicators.HasIndicator(selected, "count_ended_rentals_by_duration_and_time_period") {
+		indicatorID, err := indicators.GetNumericIndicatorID("count_ended_rentals_by_duration_and_time_period")
+		if err != nil {
+			log.Fatal(err)
+		}
+		insertMonthlyDurationStatistics(db, month, indicatorID)
 	}
 
-	durationIndicatorID, err := indicators.GetNumericIndicatorID("count_ended_rentals_by_duration_and_time_period")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	realDistanceIndicatorID, err := indicators.GetNumericIndicatorID("count_ended_rentals_by_real_distance_and_time_period")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	monthStart := time.Date(startDate.Year(), startDate.Month(), 1, 0, 0, 0, 0, time.Local)
-	for !monthStart.After(endDate) {
-		monthEnd := monthStart.AddDate(0, 1, -1)
-		loadEnd := monthEnd
-		if loadEnd.After(endDate) {
-			loadEnd = endDate
+	if indicators.HasIndicator(selected, "count_ended_rentals_by_real_distance_and_time_period") {
+		indicatorID, err := indicators.GetNumericIndicatorID("count_ended_rentals_by_real_distance_and_time_period")
+		if err != nil {
+			log.Fatal(err)
 		}
-
-		log.Printf("Computing monthly rental statistics for %s", monthStart.Format("2006-01"))
-
-		loadTripsInBetween(db, monthStart, loadEnd)
-		analyze.FindTripIntersectionsWithZones(db)
-
-		if distanceSelected {
-			insertMonthlyDistanceStatistics(db, monthStart, distanceIndicatorID)
-		}
-		if durationSelected {
-			insertMonthlyDurationStatistics(db, monthStart, durationIndicatorID)
-		}
-		if realDistanceSelected {
-			insertMonthlyRealDistanceStatistics(db, monthStart, realDistanceIndicatorID)
-		}
-
-		monthStart = monthStart.AddDate(0, 1, 0)
+		insertMonthlyRealDistanceStatistics(db, month, indicatorID)
 	}
 }
 

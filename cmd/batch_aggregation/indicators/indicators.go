@@ -205,6 +205,34 @@ func HasIndicator(selected []Indicator, textID string) bool {
 	return false
 }
 
+func IsMonthlyIndicator(indicator Indicator) bool {
+	switch indicator.TextID {
+	case "count_ended_rentals_by_distance_and_time_period",
+		"count_ended_rentals_by_duration_and_time_period",
+		"count_ended_rentals_by_real_distance_and_time_period":
+		return true
+	}
+	return false
+}
+
+func HasMonthlyIndicators(selected []Indicator) bool {
+	for _, indicator := range selected {
+		if IsMonthlyIndicator(indicator) {
+			return true
+		}
+	}
+	return false
+}
+
+func HasDailyIndicators(selected []Indicator) bool {
+	for _, indicator := range selected {
+		if !IsMonthlyIndicator(indicator) {
+			return true
+		}
+	}
+	return false
+}
+
 func IsSelectedOnDate(selected []Indicator, textID string, date time.Time) bool {
 	id, err := GetNumericIndicatorID(textID)
 	if err != nil {

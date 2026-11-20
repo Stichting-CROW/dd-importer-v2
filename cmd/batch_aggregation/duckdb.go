@@ -89,6 +89,19 @@ func initDuckDB() *sql.DB {
 		log.Fatal(err)
 	}
 
+	log.Print("Creating monthly_flush_context table...")
+	stmt4 := `
+	CREATE TABLE IF NOT EXISTS monthly_flush_context (
+		month     DATE NOT NULL,
+		indicator SMALLINT NOT NULL
+	);
+	`
+
+	_, err = db.Exec(stmt4)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	return db
 }
 

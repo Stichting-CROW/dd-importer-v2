@@ -129,18 +129,28 @@ func executeRun(recalculate bool, selected []indicators.Indicator, from time.Tim
 	loadZones(dConn)
 
 	runStart, runEnd := determineDateRange(recalculate, selected, from, to, pgConn)
-	if runStart.After(runEnd) {
+	window := newAggregationWindow(runStart, runEnd, selected)
+
+	if !window.runDaily && !window.runMonthly {
 		log.Print("Nothing to calculate for the selected indicators and date range.")
 		updateMaterializedViewsAndIndexes(pgConn)
 		return nil
 	}
 
-	fmt.Printf("Date range: %s -> %s\n",
-		runStart.Format("2006-01-02"),
-		runEnd.Format("2006-01-02"),
-	)
+	if window.runDaily {
+		fmt.Printf("Daily range: %s -> %s\n",
+			runStart.Format("2006-01-02"),
+			runEnd.Format("2006-01-02"),
+		)
+	}
+	if window.runMonthly {
+		fmt.Printf("Monthly range: %s -> %s\n",
+			window.monthStart.Format("2006-01"),
+			window.monthEnd.Format("2006-01"),
+		)
+	}
 
-	aggregateAndStoreData(dConn, runStart, runEnd, selected)
+	aggregateAndStoreData(dConn, window, selected)
 
 	updateMaterializedViewsAndIndexes(pgConn)
 
@@ -277,55 +287,190 @@ func determineDateRange(recalculate bool, selected []indicators.Indicator, from 
 	return runStart, to
 }
 
-func aggregateAndStoreData(dConn *sql.DB, startDate time.Time, endDate time.Time, selected []indicators.Indicator) {
-	const chunkSize = 30
-	processedBatches := 0
+type aggregationWindow struct {
+	dailyStart time.Time
+	dailyEnd   time.Time
+	monthStart time.Time
+	monthEnd   time.Time
+	runDaily   bool
+	runMonthly bool
+}
 
-	for start := startDate; !start.After(endDate); {
-		end := start.AddDate(0, 0, chunkSize)
-		if end.After(endDate) {
-			end = endDate
+func startOfMonth(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, t.Location())
+}
+
+func newAggregationWindow(runStart time.Time, runEnd time.Time, selected []indicators.Indicator) aggregationWindow {
+	runDaily := indicators.HasDailyIndicators(selected) && !runStart.After(runEnd)
+	runMonthly := indicators.HasMonthlyIndicators(selected)
+
+	window := aggregationWindow{
+		dailyStart: runStart,
+		dailyEnd:   runEnd,
+		runDaily:   runDaily,
+		runMonthly: runMonthly,
+	}
+
+	if runMonthly {
+		monthlyAnchor := runStart
+		if monthlyAnchor.After(runEnd) {
+			monthlyAnchor = runEnd
 		}
+		window.monthStart = startOfMonth(monthlyAnchor)
+		window.monthEnd = startOfMonth(runEnd)
+	} else if runDaily {
+		window.monthStart = startOfMonth(runStart)
+		window.monthEnd = startOfMonth(runEnd)
+	}
 
-		fmt.Printf("Chunk: %s -> %s\n",
-			start.Format("2006-01-02"),
-			end.Format("2006-01-02"),
-		)
+	return window
+}
 
-		analyzeChunk(dConn, start, end, selected)
-		start = end.AddDate(0, 0, 1)
-
-		processedBatches += 1
-		// Cleanup and write to Postgres every 5 batches
-		if processedBatches%5 == 0 {
-			analyze.AggregateVehiclesInPublicSpacePerDay(dConn, selected)
-			analyze.ComputeTripsPerVehiclePerDay(dConn, selected)
-			analyze.AggregateAvailableVehiclesPerDay(dConn, selected)
-			writeToPostgres(dConn)
-			cleanupTmpTables(dConn)
+func hasAnyIndicator(selected []indicators.Indicator, textIDs ...string) bool {
+	for _, textID := range textIDs {
+		if indicators.HasIndicator(selected, textID) {
+			return true
 		}
 	}
+	return false
+}
+
+func aggregateAndStoreData(dConn *sql.DB, window aggregationWindow, selected []indicators.Indicator) {
+	const flushEveryMonths = 5
+	processedMonths := 0
+	flushMonths := []time.Time{}
+
+	for monthStart := window.monthStart; !monthStart.After(window.monthEnd); monthStart = monthStart.AddDate(0, 1, 0) {
+		monthEnd := monthStart.AddDate(0, 1, -1)
+		monthLoadEnd := monthEnd
+		if monthLoadEnd.After(window.dailyEnd) {
+			monthLoadEnd = window.dailyEnd
+		}
+
+		dayStart := monthStart
+		if dayStart.Before(window.dailyStart) {
+			dayStart = window.dailyStart
+		}
+		dayEnd := monthEnd
+		if dayEnd.After(window.dailyEnd) {
+			dayEnd = window.dailyEnd
+		}
+		runDailyThisMonth := window.runDaily && !dayStart.After(dayEnd)
+
+		log.Printf("Processing month %s", monthStart.Format("2006-01"))
+		analyzeMonth(dConn, monthStart, monthLoadEnd, dayStart, dayEnd, runDailyThisMonth, window.runMonthly, selected)
+
+		if window.runMonthly {
+			flushMonths = append(flushMonths, monthStart)
+		}
+
+		processedMonths += 1
+		if processedMonths%flushEveryMonths == 0 {
+			flushStatistics(dConn, selected, flushMonths)
+			flushMonths = nil
+		}
+	}
+
+	flushStatistics(dConn, selected, flushMonths)
+}
+
+func selectedMonthlyIndicatorIDs(selected []indicators.Indicator) []int32 {
+	ids := []int32{}
+	for _, indicator := range selected {
+		if indicators.IsMonthlyIndicator(indicator) {
+			ids = append(ids, int32(indicator.ID))
+		}
+	}
+	return ids
+}
+
+func flushStatistics(dConn *sql.DB, selected []indicators.Indicator, months []time.Time) {
+	if len(months) > 0 {
+		indicatorIDs := selectedMonthlyIndicatorIDs(selected)
+		_, err := dConn.Exec("TRUNCATE TABLE monthly_flush_context;")
+		if err != nil {
+			log.Fatal(err)
+		}
+		for _, month := range months {
+			for _, indicatorID := range indicatorIDs {
+				_, err = dConn.Exec("INSERT INTO monthly_flush_context (month, indicator) VALUES ($1, $2);",
+					month.Format("2006-01-02"), indicatorID)
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+		}
+	}
+
 	analyze.AggregateVehiclesInPublicSpacePerDay(dConn, selected)
 	analyze.ComputeTripsPerVehiclePerDay(dConn, selected)
 	analyze.AggregateAvailableVehiclesPerDay(dConn, selected)
-	computeMonthlyRentalStatistics(dConn, startDate, endDate, selected)
 	writeToPostgres(dConn)
 	cleanupTmpTables(dConn)
 }
 
-func analyzeChunk(dConn *sql.DB, startDate time.Time, endDate time.Time, selected []indicators.Indicator) {
-	loadParkEventInBetween(dConn, startDate, endDate)
-	loadNonOperationalEventsInBetween(dConn, startDate, endDate)
-	loadTripsInBetween(dConn, startDate, endDate)
-	analyze.FindIntersectionsWithZones(dConn)
-	analyze.FindTripIntersectionsWithZones(dConn)
+func analyzeMonth(dConn *sql.DB, monthStart time.Time, monthLoadEnd time.Time, dayStart time.Time, dayEnd time.Time, runDaily bool, runMonthly bool, selected []indicators.Indicator) {
+	wronglyParkedSelected := runDaily && indicators.HasIndicator(selected, "count_wrongly_parked_vehicles")
 
-	for d := startDate; !d.After(endDate); d = d.AddDate(0, 0, 1) {
-		log.Printf("Analyzing date %s", d.Format("2006-01-02"))
-		analyzeDay(dConn, d, selected)
+	needsParkEvents := runDaily && (wronglyParkedSelected || hasAnyIndicator(selected,
+		"count_vehicles_in_public_space",
+		"count_vehicles_in_public_space_longer_then_1_days",
+		"count_vehicles_in_public_space_longer_then_3_days",
+		"count_vehicles_in_public_space_longer_then_7_days",
+		"count_vehicles_in_public_space_longer_then_14_days",
+		"count_vehicles_non_operational_longer_then_24_hours",
+		"count_vehicles_non_operational_longer_then_7_days",
+		"rentals_per_vehicle_per_day",
+		"available_vehicles_in_public_space",
+	))
+
+	needsNonOperationalEvents := runDaily && hasAnyIndicator(selected,
+		"count_vehicles_non_operational_longer_then_24_hours",
+		"count_vehicles_non_operational_longer_then_7_days",
+		"available_vehicles_in_public_space",
+	)
+
+	needsTrips := runMonthly || (runDaily && hasAnyIndicator(selected,
+		"count_rentals_per_day",
+		"rentals_per_vehicle_per_day",
+		"available_vehicles_in_public_space",
+		"rented_out_vehicles_available_same_day",
+	))
+
+	if needsParkEvents {
+		loadParkEventInBetween(dConn, dayStart, monthLoadEnd)
 	}
-	analyze.CountWronglyParkedVehicles(dConn, startDate, endDate, selected)
-	analyze.AggregateWronglyParkedVehiclesPerDay(dConn, startDate, endDate, selected)
+	if needsNonOperationalEvents {
+		loadNonOperationalEventsInBetween(dConn, dayStart, monthLoadEnd)
+	}
+	if needsTrips {
+		tripLoadStart := monthStart
+		if !runMonthly {
+			tripLoadStart = dayStart
+		}
+		loadTripsInBetween(dConn, tripLoadStart, monthLoadEnd)
+	}
+	if needsParkEvents {
+		analyze.FindIntersectionsWithZones(dConn)
+	}
+	if needsTrips {
+		analyze.FindTripIntersectionsWithZones(dConn)
+	}
+
+	if runDaily {
+		for d := dayStart; !d.After(dayEnd); d = d.AddDate(0, 0, 1) {
+			log.Printf("Analyzing date %s", d.Format("2006-01-02"))
+			analyzeDay(dConn, d, selected)
+		}
+		if wronglyParkedSelected {
+			analyze.CountWronglyParkedVehicles(dConn, dayStart, dayEnd, selected)
+			analyze.AggregateWronglyParkedVehiclesPerDay(dConn, dayStart, dayEnd, selected)
+		}
+	}
+
+	if runMonthly {
+		computeMonthlyStatisticsForMonth(dConn, monthStart, selected)
+	}
 }
 
 func analyzeDay(dConn *sql.DB, date time.Time, selected []indicators.Indicator) {
@@ -400,15 +545,6 @@ func deleteIndicatorData(pgConn *pgx.Conn, selected []indicators.Indicator, from
 		log.Fatalf("Failed to delete day_statistics: %v", err)
 	}
 
-	_, err = pgConn.Exec(context.Background(),
-		"DELETE FROM month_statistics WHERE indicator = ANY($1) AND month >= date_trunc('month', $2::date) AND month <= date_trunc('month', $3::date);",
-		ids,
-		from.Format("2006-01-02"),
-		to.Format("2006-01-02"),
-	)
-	if err != nil {
-		log.Fatalf("Failed to delete month_statistics: %v", err)
-	}
 }
 
 func writeToPostgres(db *sql.DB) {
@@ -452,17 +588,17 @@ func writeToPostgres(db *sql.DB) {
 		log.Fatal(err)
 	}
 
-	var monthCount int
-	err = db.QueryRow("SELECT COUNT(*) FROM month_statistics;").Scan(&monthCount)
+	var flushContextCount int
+	err = db.QueryRow("SELECT COUNT(*) FROM monthly_flush_context;").Scan(&flushContextCount)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if monthCount > 0 {
+	if flushContextCount > 0 {
 		stmt = `
 		DELETE FROM postgres_db.month_statistics
-		WHERE indicator IN (SELECT DISTINCT indicator FROM month_statistics)
-			AND month IN (SELECT DISTINCT month FROM month_statistics);
+		WHERE indicator IN (SELECT DISTINCT indicator FROM monthly_flush_context)
+			AND month IN (SELECT DISTINCT month FROM monthly_flush_context);
 		`
 		_, err = db.Exec(stmt)
 		if err != nil {
@@ -513,6 +649,14 @@ func cleanupTmpTables(db *sql.DB) {
 		TRUNCATE TABLE month_statistics;
 	`
 	_, err = db.Exec(stmt3)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	stmt4 := `
+		TRUNCATE TABLE monthly_flush_context;
+	`
+	_, err = db.Exec(stmt4)
 	if err != nil {
 		log.Fatal(err)
 	}
