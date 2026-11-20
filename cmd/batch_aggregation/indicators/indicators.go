@@ -82,6 +82,30 @@ var All = []Indicator{
 		Description: "Het aantal voertuigen in de openbare ruimte die niet defect zijn op 6 momenten per dag, aangevuld met lopende ritten die voor middernacht eindigen.",
 		FirstDay:    time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC),
 	},
+	{
+		ID:          12,
+		TextID:      "rented_out_vehicles_available_same_day",
+		Description: "Het aantal op een meetmoment verhuurde voertuigen dat dezelfde dag weer beschikbaar komt, op 6 momenten per dag.",
+		FirstDay:    DefaultFirstDay,
+	},
+	{
+		ID:          13,
+		TextID:      "count_ended_rentals_by_distance_and_time_period",
+		Description: "Het aantal beëindigde verhuringen per maand per CBS-afstandsklasse en tijdsperiode, op basis van de voertuigendatabron.",
+		FirstDay:    DefaultFirstDay,
+	},
+	{
+		ID:          14,
+		TextID:      "count_ended_rentals_by_duration_and_time_period",
+		Description: "Het aantal beëindigde verhuringen per maand per huurduurklasse en tijdsperiode, op basis van de voertuigendatabron.",
+		FirstDay:    DefaultFirstDay,
+	},
+	{
+		ID:          15,
+		TextID:      "count_ended_rentals_by_real_distance_and_time_period",
+		Description: "Het aantal beëindigde verhuringen per maand per CBS-afstandsklasse en tijdsperiode, op basis van de werkelijk geregistreerde afstand in de rittentabel.",
+		FirstDay:    DefaultFirstDay,
+	},
 }
 
 var (

@@ -69,6 +69,26 @@ func initDuckDB() *sql.DB {
 		log.Fatal(err)
 	}
 
+	log.Print("Creating month_statistics table...")
+	stmt3 := `
+	CREATE TABLE IF NOT EXISTS month_statistics (
+		month        DATE NOT NULL,
+		indicator    SMALLINT NOT NULL,
+		geometry_ref VARCHAR NOT NULL,
+		system_id    VARCHAR NOT NULL,
+		vehicle_type VARCHAR NOT NULL,
+		trip_source  VARCHAR NOT NULL,
+		category     SMALLINT NOT NULL,
+		time_period  SMALLINT NOT NULL,
+		value        NUMERIC NOT NULL
+	);
+	`
+
+	_, err = db.Exec(stmt3)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	return db
 }
 
@@ -207,7 +227,8 @@ func loadTripsInBetween(db *sql.DB, startDate time.Time, endDate time.Time) {
 		'SELECT trip_id, ST_AsBinary(start_location) AS start_location, ST_AsBinary(end_location) AS end_location,
 		start_time, end_time, trips.system_id,
 		CONCAT(form_factor, '':'', propulsion_type) AS vehicle_type,
-		trips.trip_source::text AS trip_source
+		trips.trip_source::text AS trip_source,
+		trips.distance_over_road
 		FROM trips
 		JOIN vehicle_type
 		USING(vehicle_type_id)

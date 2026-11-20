@@ -401,6 +401,35 @@ CREATE INDEX idx_day_statistics_system_date
 ON day_statistics (system_id, date, indicator, geometry_ref, vehicle_type, trip_source)
 INCLUDE (value);
 
+-- Monthly statistics for trip-derived KPIs that need extra dimensions.
+-- The indicator determines what `category` means:
+--   indicator 13: straight-line CBS distance category 0-9
+--   indicator 14: rental duration category 0-11
+--   indicator 15: distance_over_road CBS distance category 0-9
+-- See sql/migrations/20261120_add_month_statistics.sql for the boundaries.
+CREATE TABLE IF NOT EXISTS month_statistics (
+    month        DATE NOT NULL,
+    indicator    SMALLINT NOT NULL,
+    geometry_ref VARCHAR NOT NULL,
+    system_id    VARCHAR NOT NULL,
+    vehicle_type VARCHAR NOT NULL,
+    trip_source  VARCHAR NOT NULL CHECK (trip_source IN ('vehicles', 'trips')),
+    category     SMALLINT NOT NULL CHECK (category BETWEEN 0 AND 11),
+    time_period  SMALLINT NOT NULL CHECK (time_period BETWEEN 0 AND 5),
+    value        NUMERIC NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_month_statistics_pkey
+ON month_statistics (month, indicator, geometry_ref, system_id, vehicle_type, trip_source, category, time_period);
+
+CREATE INDEX IF NOT EXISTS idx_month_statistics_geometry_month
+ON month_statistics (geometry_ref, month, indicator, system_id, vehicle_type, trip_source)
+INCLUDE (category, time_period, value);
+
+CREATE INDEX IF NOT EXISTS idx_month_statistics_system_month
+ON month_statistics (system_id, month, indicator, geometry_ref, vehicle_type, trip_source)
+INCLUDE (category, time_period, value);
+
 -- Create feed_downtime table
 CREATE TABLE IF NOT EXISTS feed_downtime (
     downtime_id SERIAL PRIMARY KEY,

@@ -308,6 +308,7 @@ func aggregateAndStoreData(dConn *sql.DB, startDate time.Time, endDate time.Time
 	analyze.AggregateVehiclesInPublicSpacePerDay(dConn, selected)
 	analyze.ComputeTripsPerVehiclePerDay(dConn, selected)
 	analyze.AggregateAvailableVehiclesPerDay(dConn, selected)
+	computeMonthlyRentalStatistics(dConn, startDate, endDate, selected)
 	writeToPostgres(dConn)
 	cleanupTmpTables(dConn)
 }
@@ -343,6 +344,7 @@ func analyzeDay(dConn *sql.DB, date time.Time, selected []indicators.Indicator) 
 	analyze.CountVehiclesInPublicSpaceOnDate(dConn, measurementMoment, selected)
 	analyze.CountTripsPerDay(dConn, date, selected)
 	analyze.CountAvailableVehiclesInPublicSpace(dConn, date, selected)
+	analyze.CountRentedOutVehiclesAvailableSameDay(dConn, date, selected)
 }
 
 func syncIndicatorsToPostgres(pgConn *pgx.Conn) {
@@ -397,6 +399,16 @@ func deleteIndicatorData(pgConn *pgx.Conn, selected []indicators.Indicator, from
 	if err != nil {
 		log.Fatalf("Failed to delete day_statistics: %v", err)
 	}
+
+	_, err = pgConn.Exec(context.Background(),
+		"DELETE FROM month_statistics WHERE indicator = ANY($1) AND month >= date_trunc('month', $2::date) AND month <= date_trunc('month', $3::date);",
+		ids,
+		from.Format("2006-01-02"),
+		to.Format("2006-01-02"),
+	)
+	if err != nil {
+		log.Fatalf("Failed to delete month_statistics: %v", err)
+	}
 }
 
 func writeToPostgres(db *sql.DB) {
@@ -439,6 +451,45 @@ func writeToPostgres(db *sql.DB) {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	var monthCount int
+	err = db.QueryRow("SELECT COUNT(*) FROM month_statistics;").Scan(&monthCount)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if monthCount > 0 {
+		stmt = `
+		DELETE FROM postgres_db.month_statistics
+		WHERE indicator IN (SELECT DISTINCT indicator FROM month_statistics)
+			AND month IN (SELECT DISTINCT month FROM month_statistics);
+		`
+		_, err = db.Exec(stmt)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		stmt = `
+		INSERT INTO postgres_db.month_statistics
+			(month, indicator, geometry_ref, system_id, vehicle_type, trip_source, category, time_period, value)
+		SELECT
+			month,
+			indicator,
+			geometry_ref,
+			system_id,
+			vehicle_type,
+			trip_source,
+			category,
+			time_period,
+			value
+		FROM month_statistics;
+		`
+
+		_, err = db.Exec(stmt)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 }
 
 func cleanupTmpTables(db *sql.DB) {
@@ -454,6 +505,14 @@ func cleanupTmpTables(db *sql.DB) {
 		TRUNCATE TABLE day_statistics;
 	`
 	_, err = db.Exec(stmt2)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	stmt3 := `
+		TRUNCATE TABLE month_statistics;
+	`
+	_, err = db.Exec(stmt3)
 	if err != nil {
 		log.Fatal(err)
 	}
