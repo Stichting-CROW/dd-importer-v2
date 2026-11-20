@@ -235,7 +235,7 @@ func loadTripsInBetween(db *sql.DB, startDate time.Time, endDate time.Time) {
 	stmt = `
 	CREATE TABLE IF NOT EXISTS trips AS
 	SELECT trip_id, ST_GeomFromWKB(start_location) AS start_location, ST_GeomFromWKB(end_location) AS end_location,
-	start_time, end_time, system_id, vehicle_type, trip_source
+	start_time, end_time, system_id, vehicle_type, trip_source, distance_over_road
 	FROM postgres_query('postgres_db', 
 		'SELECT trip_id, ST_AsBinary(start_location) AS start_location, ST_AsBinary(end_location) AS end_location,
 		start_time, end_time, trips.system_id,
