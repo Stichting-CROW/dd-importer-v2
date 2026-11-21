@@ -71,6 +71,32 @@ func TestNewAggregationWindowCrossesMonthBoundary(t *testing.T) {
 	assertDate(t, "monthEnd", window.monthEnd, 2026, time.December, 1)
 }
 
+func TestNewAggregationWindowNormalizesMixedLocations(t *testing.T) {
+	cet := time.FixedZone("CET", 60*60)
+	runStart := time.Date(2026, time.November, 20, 0, 0, 0, 0, time.UTC)
+	runEnd := time.Date(2026, time.November, 20, 4, 0, 0, 0, cet)
+
+	window := newAggregationWindow(runStart, runEnd, mustIndicators(t,
+		"count_rentals_per_day",
+		"count_ended_rentals_by_distance_and_time_period"))
+
+	if !window.runDaily {
+		t.Fatal("expected daily processing to be enabled")
+	}
+	if !window.runMonthly {
+		t.Fatal("expected monthly processing to be enabled")
+	}
+	if window.monthStart.After(window.monthEnd) {
+		t.Fatalf("monthStart %s is after monthEnd %s", window.monthStart, window.monthEnd)
+	}
+	if got := window.monthStart.Format("2006-01-02"); got != "2026-11-01" {
+		t.Fatalf("monthStart = %s, want 2026-11-01", got)
+	}
+	if got := window.monthEnd.Format("2006-01-02"); got != "2026-11-01" {
+		t.Fatalf("monthEnd = %s, want 2026-11-01", got)
+	}
+}
+
 func TestNewAggregationWindowDailyOnly(t *testing.T) {
 	runStart := time.Date(2026, time.November, 15, 0, 0, 0, 0, time.UTC)
 	runEnd := time.Date(2026, time.November, 19, 0, 0, 0, 0, time.UTC)

@@ -269,7 +269,7 @@ func determineDateRange(recalculate bool, selected []indicators.Indicator, from 
 	if recalculate {
 		requestedStart = from
 	} else {
-		requestedStart = getNewestDateInMomentStatistics(pgConn).AddDate(0, 0, 1)
+		requestedStart = getNewestDateInMomentStatistics(pgConn).Local().AddDate(0, 0, 1)
 	}
 
 	if to.Year() <= 1 {
@@ -301,6 +301,10 @@ func startOfMonth(t time.Time) time.Time {
 }
 
 func newAggregationWindow(runStart time.Time, runEnd time.Time, selected []indicators.Indicator) aggregationWindow {
+	loc := runEnd.Location()
+	runStart = runStart.In(loc)
+	runEnd = runEnd.In(loc)
+
 	runDaily := indicators.HasDailyIndicators(selected) && !runStart.After(runEnd)
 	runMonthly := indicators.HasMonthlyIndicators(selected)
 
@@ -318,6 +322,12 @@ func newAggregationWindow(runStart time.Time, runEnd time.Time, selected []indic
 		}
 		window.monthStart = startOfMonth(monthlyAnchor)
 		window.monthEnd = startOfMonth(runEnd)
+		if window.monthStart.After(window.monthEnd) {
+			log.Printf("Invalid aggregation window: monthStart %s is after monthEnd %s",
+				window.monthStart.Format("2006-01-02"),
+				window.monthEnd.Format("2006-01-02"),
+			)
+		}
 	} else if runDaily {
 		window.monthStart = startOfMonth(runStart)
 		window.monthEnd = startOfMonth(runEnd)
@@ -336,6 +346,14 @@ func hasAnyIndicator(selected []indicators.Indicator, textIDs ...string) bool {
 }
 
 func aggregateAndStoreData(dConn *sql.DB, window aggregationWindow, selected []indicators.Indicator) {
+	if window.monthStart.After(window.monthEnd) {
+		log.Printf("Skipping aggregation: monthStart %s is after monthEnd %s",
+			window.monthStart.Format("2006-01-02"),
+			window.monthEnd.Format("2006-01-02"),
+		)
+		return
+	}
+
 	const flushEveryMonths = 5
 	processedMonths := 0
 	flushMonths := []time.Time{}
