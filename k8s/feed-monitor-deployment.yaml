@@ -36,3 +36,5 @@ spec:
                   name: telegram-token-ops-bot
             - name: TELEGRAM_CHAT_ID
               value: "-716168993"
+            - name: TELEGRAM_ALERT_DATA_TYPES
+              value: "trips,service_areas"

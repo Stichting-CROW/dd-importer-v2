@@ -14,4 +14,4 @@
 --
 -- Docker (inline the statement, pipe only the CSV):
 --   cat sql/mds_trips_feeds_new.csv | docker exec -i <container> psql "$DATABASE_URL" -c "$(cat sql/load_mds_trips_feeds.sql)"
-COPY feeds (system_id, feed_url, feed_type, import_strategy, authentication, request_headers, default_vehicle_type, is_active, import_vehicles, import_service_area, remarks) FROM STDIN WITH (FORMAT CSV, HEADER);
+COPY feeds (system_id, feed_url, feed_type, import_strategy, authentication, request_headers, default_vehicle_type, is_active, data_type, remarks) FROM STDIN WITH (FORMAT CSV, HEADER);

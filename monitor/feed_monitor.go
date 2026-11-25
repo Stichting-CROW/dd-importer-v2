@@ -4,19 +4,43 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/jmoiron/sqlx"
 )
 
+// Values of feeds.data_type.
+const (
+	dataTypeVehicles     = "vehicles"
+	dataTypeTrips        = "trips"
+	dataTypeServiceAreas = "service_areas"
+)
+
+// scheduledImportThresholds holds, for the data types that are imported by an
+// hourly job, how long a feed may go without a successful import before it
+// counts as down. Two runs plus a margin, so one failed run opens no downtime.
+var scheduledImportThresholds = map[string]time.Duration{
+	dataTypeTrips:        150 * time.Minute,
+	dataTypeServiceAreas: 150 * time.Minute,
+}
+
+// alertDataTypesEnv names the data types, besides vehicles, whose downtime and
+// recovery are also sent to Telegram (comma separated). Downtime is recorded
+// in feed_downtime either way.
+const alertDataTypesEnv = "TELEGRAM_ALERT_DATA_TYPES"
+
 // FeedStatus represents the current status of a feed in the database
 type FeedStatus struct {
 	FeedID                      int          `db:"feed_id"`
 	SystemID                    string       `db:"system_id"`
 	IsActive                    bool         `db:"is_active"`
-	ImportVehicles              bool         `db:"import_vehicles"`
+	DataType                    string       `db:"data_type"`
 	LastTimeSuccesfullyImported sql.NullTime `db:"last_time_succesfully_imported"`
+	LastTimeImportAttempted     sql.NullTime `db:"last_time_import_attempted"`
+	ImportFailingSince          sql.NullTime `db:"import_failing_since"`
 }
 
 // DowntimeRecord represents a downtime entry in the database
@@ -32,10 +56,11 @@ type DowntimeRecord struct {
 
 // Notification represents a notification to be sent
 type Notification struct {
-	Type     string // "downtime", "recovery", "enabled", "disabled"
+	Type     string // "downtime", "recovery", "enabled", "disabled", "importer_stalled"
 	SystemID string
 	FeedID   int
-	Duration string // For downtime/recovery
+	DataType string // For importer_stalled, and downtime/recovery of other feeds than vehicles
+	Duration string // For downtime/recovery/importer_stalled
 }
 
 // FeedMonitor tracks feed uptime and manages notifications
@@ -43,6 +68,8 @@ type FeedMonitor struct {
 	DB               *sqlx.DB
 	Notifier         *TelegramNotifier
 	LastCheck        map[int]FeedStatus
+	alertDataTypes   map[string]bool
+	importerStalled  map[string]bool
 	notificationChan chan Notification
 	stopChan         chan bool
 	wg               sync.WaitGroup
@@ -54,12 +81,14 @@ func NewFeedMonitor(db *sqlx.DB, notifier *TelegramNotifier) *FeedMonitor {
 		DB:               db,
 		Notifier:         notifier,
 		LastCheck:        make(map[int]FeedStatus),
+		alertDataTypes:   parseDataTypes(os.Getenv(alertDataTypesEnv)),
+		importerStalled:  make(map[string]bool),
 		notificationChan: make(chan Notification, 100), // Buffer up to 100 notifications
 		stopChan:         make(chan bool),
 	}
 }
 
-// MonitorFeeds continuously monitors all vehicle import feeds
+// MonitorFeeds continuously monitors all feeds
 func (fm *FeedMonitor) MonitorFeeds() {
 	log.Println("Starting feed monitoring loop...")
 
@@ -98,9 +127,11 @@ func (fm *FeedMonitor) notificationProcessor() {
 
 		switch notification.Type {
 		case "downtime":
-			err = fm.Notifier.SendDowntimeAlert(notification.SystemID, notification.FeedID, notification.Duration)
+			err = fm.Notifier.SendDowntimeAlert(notification.SystemID, notification.FeedID, notification.DataType, notification.Duration)
 		case "recovery":
-			err = fm.Notifier.SendRecoveryAlert(notification.SystemID, notification.FeedID, notification.Duration)
+			err = fm.Notifier.SendRecoveryAlert(notification.SystemID, notification.FeedID, notification.DataType, notification.Duration)
+		case "importer_stalled":
+			err = fm.Notifier.SendImporterStalledAlert(notification.DataType, notification.Duration)
 		case "enabled":
 			err = fm.Notifier.SendNewFeedAlert(notification.SystemID, notification.FeedID)
 		case "disabled":
@@ -166,14 +197,167 @@ func (fm *FeedMonitor) checkFeeds() {
 			}
 		}
 
-		// Only check downtime for feeds that should import vehicles
-		if feed.ImportVehicles && feed.IsActive {
-			fm.checkDowntime(feed, currentTime)
+		if feed.IsActive {
+			if feed.DataType == dataTypeVehicles {
+				fm.checkDowntime(feed, currentTime)
+			} else if threshold, ok := scheduledImportThresholds[feed.DataType]; ok {
+				fm.checkScheduledImport(feed, currentTime, threshold)
+			}
 		}
 
 		// Update last check state
 		fm.LastCheck[feed.FeedID] = feed
 	}
+
+	fm.checkImportersRunning(feeds, currentTime)
+}
+
+// importState is what the monitor concludes about a feed that is imported by
+// a scheduled job.
+type importState int
+
+const (
+	// importStateUnknown: no conclusion, downtime records are left as they are.
+	importStateUnknown importState = iota
+	importStateUp
+	importStateDown
+)
+
+// scheduledImportState decides whether a trips or service area feed is up or
+// down. When it is down, the second result is the start of the downtime: the
+// first failed attempt since the last successful import.
+//
+// The state is unknown when the feed was never attempted, when the last
+// attempt is older than the threshold (the importer is not running, which is
+// not the feed's fault) and while a failing feed is still within the threshold.
+func scheduledImportState(feed FeedStatus, now time.Time, threshold time.Duration) (importState, time.Time) {
+	attempted := feed.LastTimeImportAttempted
+	if !attempted.Valid || now.Sub(attempted.Time) > threshold {
+		return importStateUnknown, time.Time{}
+	}
+
+	if !feed.ImportFailingSince.Valid {
+		return importStateUp, time.Time{}
+	}
+
+	failingSince := feed.ImportFailingSince.Time
+	lastGood := failingSince
+	if feed.LastTimeSuccesfullyImported.Valid {
+		lastGood = feed.LastTimeSuccesfullyImported.Time
+	}
+	if now.Sub(lastGood) > threshold {
+		return importStateDown, failingSince
+	}
+	return importStateUnknown, time.Time{}
+}
+
+// checkScheduledImport manages downtime records for a trips or service area feed
+func (fm *FeedMonitor) checkScheduledImport(feed FeedStatus, currentTime time.Time, threshold time.Duration) {
+	state, downSince := scheduledImportState(feed, currentTime, threshold)
+	if state == importStateUnknown {
+		return
+	}
+
+	ongoingDowntime, err := fm.getOngoingDowntime(feed.FeedID)
+	if err != nil {
+		log.Printf("Error checking ongoing downtime for feed %d: %v", feed.FeedID, err)
+		return
+	}
+
+	switch {
+	case state == importStateDown && ongoingDowntime == nil:
+		downtimeID, err := fm.createDowntimeRecord(feed.FeedID, downSince,
+			fmt.Sprintf("No successful %s import since %s", feed.DataType, downSince.UTC().Format(time.RFC3339)))
+		if err != nil {
+			log.Printf("Error creating downtime record for feed %d: %v", feed.FeedID, err)
+			return
+		}
+		log.Printf("Downtime recorded for %s feed %s (ID: %d)", feed.DataType, feed.SystemID, feed.FeedID)
+
+		if fm.alertDataTypes[feed.DataType] {
+			fm.queueNotification(Notification{
+				Type:     "downtime",
+				SystemID: feed.SystemID,
+				FeedID:   feed.FeedID,
+				DataType: feed.DataType,
+				Duration: formatDuration(currentTime.Sub(downSince)),
+			})
+			fm.markNotificationSent(downtimeID)
+		}
+
+	case state == importStateUp && ongoingDowntime != nil:
+		if err := fm.closeDowntimeRecord(ongoingDowntime.DowntimeID, currentTime); err != nil {
+			log.Printf("Error closing downtime record %d: %v", ongoingDowntime.DowntimeID, err)
+			return
+		}
+		downtimeDuration := currentTime.Sub(ongoingDowntime.DowntimeStart)
+		log.Printf("Downtime ended for %s feed %s (ID: %d), downtime was %v",
+			feed.DataType, feed.SystemID, feed.FeedID, formatDuration(downtimeDuration))
+
+		if fm.alertDataTypes[feed.DataType] {
+			fm.queueNotification(Notification{
+				Type:     "recovery",
+				SystemID: feed.SystemID,
+				FeedID:   feed.FeedID,
+				DataType: feed.DataType,
+				Duration: formatDuration(downtimeDuration),
+			})
+			fm.markRecoveryNotificationSent(ongoingDowntime.DowntimeID)
+		}
+	}
+}
+
+// checkImportersRunning sends one alert when the scheduled importer of a data
+// type stops attempting imports. Its feeds are not marked as down meanwhile.
+func (fm *FeedMonitor) checkImportersRunning(feeds []FeedStatus, currentTime time.Time) {
+	for dataType, threshold := range scheduledImportThresholds {
+		latestAttempt, ok := latestImportAttempt(feeds, dataType)
+		if !ok {
+			continue
+		}
+
+		stalled := currentTime.Sub(latestAttempt) > threshold
+		if stalled && !fm.importerStalled[dataType] {
+			fm.queueNotification(Notification{
+				Type:     "importer_stalled",
+				DataType: dataType,
+				Duration: formatDuration(currentTime.Sub(latestAttempt)),
+			})
+			log.Printf("The %s importer made no import attempt since %s",
+				dataType, latestAttempt.UTC().Format(time.RFC3339))
+		} else if !stalled && fm.importerStalled[dataType] {
+			log.Printf("The %s importer is running again", dataType)
+		}
+		fm.importerStalled[dataType] = stalled
+	}
+}
+
+// latestImportAttempt returns the most recent import attempt over the active
+// feeds of a data type. The second result is false when none was attempted yet.
+func latestImportAttempt(feeds []FeedStatus, dataType string) (time.Time, bool) {
+	var latest time.Time
+	found := false
+	for _, feed := range feeds {
+		if feed.DataType != dataType || !feed.IsActive || !feed.LastTimeImportAttempted.Valid {
+			continue
+		}
+		if !found || feed.LastTimeImportAttempted.Time.After(latest) {
+			latest = feed.LastTimeImportAttempted.Time
+			found = true
+		}
+	}
+	return latest, found
+}
+
+// parseDataTypes turns a comma separated list of data types into a set
+func parseDataTypes(list string) map[string]bool {
+	dataTypes := make(map[string]bool)
+	for _, dataType := range strings.Split(list, ",") {
+		if dataType = strings.TrimSpace(dataType); dataType != "" {
+			dataTypes[dataType] = true
+		}
+	}
+	return dataTypes
 }
 
 // getActiveFeeds retrieves all feeds from the database
@@ -182,8 +366,10 @@ func (fm *FeedMonitor) getActiveFeeds() ([]FeedStatus, error) {
 		feed_id, 
 		system_id, 
 		is_active, 
-		import_vehicles,
-		last_time_succesfully_imported
+		data_type,
+		last_time_succesfully_imported,
+		last_time_import_attempted,
+		import_failing_since
 		FROM feeds
 		ORDER BY feed_id`
 
