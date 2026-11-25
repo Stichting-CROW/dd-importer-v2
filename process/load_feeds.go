@@ -2,7 +2,6 @@ package process
 
 import (
 	"deelfietsdashboard-importer/feed"
-	"deelfietsdashboard-importer/feed/auth"
 	"encoding/json"
 	"log"
 
@@ -117,47 +116,12 @@ func serializeFeeds(rows *sqlx.Rows) []feed.Feed {
 		if err != nil {
 			log.Print(err)
 		}
-		// Tijdelijk filter voor testen.
-		newFeed = parseAuthentication(newFeed, authentication)
+		if err := feed.ParseAuthentication(&newFeed, authentication); err != nil {
+			log.Printf("[%s_%d] skipping feed, invalid authentication: %v", newFeed.OperatorID, newFeed.ID, err)
+			continue
+		}
 		json.Unmarshal([]byte(requestHeaders), &newFeed.RequestHeaders)
 		feeds = append(feeds, newFeed)
 	}
 	return feeds
-}
-
-func parseAuthentication(newFeed feed.Feed, data []byte) feed.Feed {
-	var result map[string]interface{}
-	json.Unmarshal([]byte(data), &result)
-	if _, ok := result["authentication_type"]; !ok {
-		return newFeed
-	}
-	newFeed.AuthenticationType = result["authentication_type"].(string)
-	switch newFeed.AuthenticationType {
-	case "token":
-		newFeed.ApiKeyName = result["ApiKeyName"].(string)
-		newFeed.ApiKey = result["ApiKey"].(string)
-	case "oauth2":
-		newFeed.OAuth2Credentials.OauthTokenBody = result["OAuth2Credentials"].(map[string]interface{})
-		newFeed.OAuth2Credentials.TokenURL = result["TokenURL"].(string)
-	case "oauth2-bolt":
-		newFeed.OAuth2CredentialsBasicAuth.OauthTokenBody = result["OAuth2Credentials"].(map[string]interface{})
-		newFeed.OAuth2CredentialsBasicAuth.TokenURL = result["TokenURL"].(string)
-	case "oauth2-basic-auth":
-		newFeed.OAuth2CredentialsBasicAuth.OauthTokenBody = result["OAuth2Credentials"].(map[string]interface{})
-		newFeed.OAuth2CredentialsBasicAuth.TokenURL = result["TokenURL"].(string)
-	case "oauth2-moveyou":
-		newFeed.OAuth2CredentialsMoveyou.OauthTokenBody = result["OAuth2Credentials"].(map[string]interface{})
-		newFeed.OAuth2CredentialsMoveyou.TokenURL = result["TokenURL"].(string)
-	case "oauth2-dott":
-		var config auth.DottAuthConfig
-
-		res, _ := json.Marshal(result["OAuth2Credentials"])
-		err := json.Unmarshal(res, &config)
-		if err != nil {
-			log.Print("Invalid config DOTT auth")
-		}
-		newFeed.OAuth2CredentialsDott.OauthTokenBody = config
-	}
-
-	return newFeed
 }
