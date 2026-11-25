@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: feed-validator
+  labels:
+    app: feed-validator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: feed-validator
+  template:
+    metadata:
+      labels:
+        app: feed-validator
+    spec:
+      containers:
+        - name: feed-validator
+          image: registry.gitlab.com/bikedashboard/feed-validator:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FEED_VALIDATOR_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: feed-validator-token
+                  key: token
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+          resources:
+            requests:
+              memory: "64Mi"
+            limits:
+              memory: "1Gi"
+---
+# ClusterIP only: the validator is reachable from the admin API inside the
+# cluster, never from the internet.
+apiVersion: v1
+kind: Service
+metadata:
+  name: feed-validator
+spec:
+  type: ClusterIP
+  selector:
+    app: feed-validator
+  ports:
+    - port: 80
+      targetPort: 8080

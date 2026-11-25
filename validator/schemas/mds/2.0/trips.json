@@ -1,0 +1,1485 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "allOf": [
+  {
+   "description": "Response bodies must be a UTF-8 encoded JSON object and must minimally include the MDS `version`.",
+   "properties": {
+    "version": {
+     "description": "The version of MDS this data represents.",
+     "examples": [
+      "2.0.0"
+     ],
+     "pattern": "^2\\.(\\d|[1-9]\\d+)\\.(\\d|[1-9]\\d+)$",
+     "title": "data-type/version",
+     "type": "string"
+    }
+   },
+   "required": [
+    "version"
+   ],
+   "title": "response/version",
+   "type": "object"
+  },
+  {
+   "properties": {
+    "trips": {
+     "items": {
+      "allOf": [
+       {
+        "properties": {
+         "accessibility_attributes": {
+          "type": [
+           "array",
+           "object"
+          ]
+         },
+         "actual_cost": {
+          "allOf": [
+           {
+            "description": "Represents an optional cost defined in a [`currency`](./currency.yaml).",
+            "examples": [
+             500,
+             520,
+             1000
+            ],
+            "minimum": 0,
+            "title": "data-types/currency-cost",
+            "type": [
+             "integer",
+             "null"
+            ]
+           }
+          ],
+          "description": "The actual cost, in the currency defined in `currency`, paid by the customer of the _mobility as a service_ provider.",
+          "examples": [
+           520
+          ]
+         },
+         "currency": {
+          "default": "USD",
+          "description": "An [ISO 4217 Alphabetic Currency Code](https://en.wikipedia.org/wiki/ISO_4217#Active_codes) representing currency of the payee. If null, USD cents is implied.",
+          "examples": [
+           "USD",
+           "EUR",
+           "GBP"
+          ],
+          "pattern": "^[A-Z]{3}$",
+          "title": "data-types/currency",
+          "type": [
+           "string",
+           "null"
+          ]
+         },
+         "data_provider_id": {
+          "allOf": [
+           {
+            "description": "A UUID used to uniquely identity an object.",
+            "examples": [
+             "3c9604d6-b5ee-11e8-96f8-529269fb1459"
+            ],
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "title": "data-types/uuid",
+            "type": "string"
+           }
+          ],
+          "description": "If different than `provider_id`, a UUID for the data solution provider managing the data feed in this endpoint."
+         },
+         "device_id": {
+          "allOf": [
+           {
+            "description": "A UUID used to uniquely identity an object.",
+            "examples": [
+             "3c9604d6-b5ee-11e8-96f8-529269fb1459"
+            ],
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "title": "data-types/uuid",
+            "type": "string"
+           }
+          ],
+          "description": "A unique device ID in UUID format."
+         },
+         "distance": {
+          "allOf": [
+           {
+            "description": "An integer greater than or equal to 0.",
+            "minimum": 0,
+            "title": "data-types/integer-positive",
+            "type": "integer"
+           }
+          ],
+          "description": "Trip distance, in meters.",
+          "examples": [
+           1000
+          ]
+         },
+         "duration": {
+          "allOf": [
+           {
+            "description": "An integer greater than or equal to 0.",
+            "minimum": 0,
+            "title": "data-types/integer-positive",
+            "type": "integer"
+           }
+          ],
+          "description": "Trip duration, in seconds.",
+          "examples": [
+           600
+          ]
+         },
+         "end_location": {
+          "allOf": [
+           {
+            "properties": {
+             "altitude": {
+              "description": "Altitude above mean sea level in meters.",
+              "type": "number"
+             },
+             "heading": {
+              "description": "Degrees - clockwise starting at 0 degrees at true North.",
+              "type": "number"
+             },
+             "horizontal_accuracy": {
+              "description": "Horizontal accuracy in meters.",
+              "type": "number"
+             },
+             "lat": {
+              "description": "Latitude coordinate.",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+             },
+             "lng": {
+              "description": "Longitude coordinate.",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+             },
+             "satellites": {
+              "allOf": [
+               {
+                "description": "An integer greater than or equal to 0.",
+                "minimum": 0,
+                "title": "data-types/integer-positive",
+                "type": "integer"
+               }
+              ],
+              "description": "Number of GPS or GNSS satellites."
+             },
+             "speed": {
+              "description": "Estimated speed in meters / sec as reported by the GPS chipset.",
+              "type": "number"
+             },
+             "vertical_accuracy": {
+              "description": "Vertical accuracy in meters.",
+              "type": "number"
+             }
+            },
+            "required": [
+             "lat",
+             "lng"
+            ],
+            "title": "data-types/gps",
+            "type": "object"
+           }
+          ],
+          "description": "Location of the end of the trip."
+         },
+         "end_time": {
+          "allOf": [
+           {
+            "description": "Integer milliseconds since Unix epoch.",
+            "examples": [
+             1514764800000,
+             1681855703000
+            ],
+            "minimum": 1514764800000,
+            "multipleOf": 1,
+            "title": "data-types/timestamp",
+            "type": "number"
+           }
+          ],
+          "description": "End of the passenger/driver trip."
+         },
+         "fare_attributes": {
+          "type": "object"
+         },
+         "parking_category": {
+          "description": "The type of parking location detected or provided and the end of a trip. Note that `other_valid` covers any other\nallowed parking location beyond what is enumerated, and `invalid` is any improper parking based on agency parking rules.",
+          "enum": [
+           "corral",
+           "curb",
+           "rack",
+           "other_valid",
+           "invalid"
+          ],
+          "type": "string"
+         },
+         "parking_verification_url": {
+          "description": "A URL to a photo (or other evidence) of proper vehicle parking at the end of a trip, provided by customer or operator.",
+          "examples": [
+           "https://data.provider.co/parking_verify/1234.jpg"
+          ],
+          "format": "uri",
+          "type": [
+           "string",
+           "null"
+          ]
+         },
+         "provider_id": {
+          "allOf": [
+           {
+            "description": "A UUID used to uniquely identity an object.",
+            "examples": [
+             "3c9604d6-b5ee-11e8-96f8-529269fb1459"
+            ],
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "title": "data-types/uuid",
+            "type": "string"
+           }
+          ],
+          "description": "A UUID for the Provider, unique within MDS. See MDS [provider list](https://github.com/openmobilityfoundation/mobility-data-specification/blob/main/providers.csv)."
+         },
+         "publication_time": {
+          "allOf": [
+           {
+            "description": "Integer milliseconds since Unix epoch.",
+            "examples": [
+             1514764800000,
+             1681855703000
+            ],
+            "minimum": 1514764800000,
+            "multipleOf": 1,
+            "title": "data-types/timestamp",
+            "type": "number"
+           }
+          ],
+          "description": "Date/time that trip became available through the trips endpoint."
+         },
+         "standard_cost": {
+          "allOf": [
+           {
+            "description": "Represents an optional cost defined in a [`currency`](./currency.yaml).",
+            "examples": [
+             500,
+             520,
+             1000
+            ],
+            "minimum": 0,
+            "title": "data-types/currency-cost",
+            "type": [
+             "integer",
+             "null"
+            ]
+           }
+          ],
+          "description": "The cost, in the currency defined in `currency`, that it would cost to perform that trip in the standard operation of the System.",
+          "examples": [
+           500
+          ]
+         },
+         "start_location": {
+          "allOf": [
+           {
+            "properties": {
+             "altitude": {
+              "description": "Altitude above mean sea level in meters.",
+              "type": "number"
+             },
+             "heading": {
+              "description": "Degrees - clockwise starting at 0 degrees at true North.",
+              "type": "number"
+             },
+             "horizontal_accuracy": {
+              "description": "Horizontal accuracy in meters.",
+              "type": "number"
+             },
+             "lat": {
+              "description": "Latitude coordinate.",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+             },
+             "lng": {
+              "description": "Longitude coordinate.",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+             },
+             "satellites": {
+              "allOf": [
+               {
+                "description": "An integer greater than or equal to 0.",
+                "minimum": 0,
+                "title": "data-types/integer-positive",
+                "type": "integer"
+               }
+              ],
+              "description": "Number of GPS or GNSS satellites."
+             },
+             "speed": {
+              "description": "Estimated speed in meters / sec as reported by the GPS chipset.",
+              "type": "number"
+             },
+             "vertical_accuracy": {
+              "description": "Vertical accuracy in meters.",
+              "type": "number"
+             }
+            },
+            "required": [
+             "lat",
+             "lng"
+            ],
+            "title": "data-types/gps",
+            "type": "object"
+           }
+          ],
+          "description": "Location of the start of the trip."
+         },
+         "start_time": {
+          "allOf": [
+           {
+            "description": "Integer milliseconds since Unix epoch.",
+            "examples": [
+             1514764800000,
+             1681855703000
+            ],
+            "minimum": 1514764800000,
+            "multipleOf": 1,
+            "title": "data-types/timestamp",
+            "type": "number"
+           }
+          ],
+          "description": "Start of the passenger/driver trip."
+         },
+         "trip_attributes": {
+          "type": "object"
+         },
+         "trip_id": {
+          "allOf": [
+           {
+            "description": "A UUID used to uniquely identity an object.",
+            "examples": [
+             "3c9604d6-b5ee-11e8-96f8-529269fb1459"
+            ],
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "title": "data-types/uuid",
+            "type": "string"
+           }
+          ],
+          "description": "A unique ID for each trip"
+         },
+         "trip_type": {
+          "type": "string"
+         }
+        }
+       },
+       {
+        "anyOf": [
+         {
+          "description": "Trip definition for the `car-share` mode.",
+          "properties": {
+           "accessibility_attributes": {
+            "allOf": [
+             {
+              "description": "Accessibility options definition for the `car-share` mode.",
+              "items": {
+               "enum": [
+                "wheelchair_accessible"
+               ],
+               "type": "string"
+              },
+              "title": "modes/car-share/accessibility-attributes",
+              "type": "array",
+              "uniqueItems": true
+             }
+            ],
+            "description": "The accessibility options utilized for a given trip. Required if available."
+           },
+           "fare_attributes": {
+            "properties": {
+             "base_rate": {
+              "allOf": [
+               {
+                "description": "Represents an optional cost defined in a [`currency`](./currency.yaml).",
+                "examples": [
+                 500,
+                 520,
+                 1000
+                ],
+                "minimum": 0,
+                "title": "data-types/currency-cost",
+                "type": [
+                 "integer",
+                 "null"
+                ]
+               }
+              ],
+              "description": "Minimum fare to be charged as soon as the trip starts."
+             },
+             "exit_fee": {
+              "allOf": [
+               {
+                "description": "Represents an optional cost defined in a [`currency`](./currency.yaml).",
+                "examples": [
+                 500,
+                 520,
+                 1000
+                ],
+                "minimum": 0,
+                "title": "data-types/currency-cost",
+                "type": [
+                 "integer",
+                 "null"
+                ]
+               }
+              ],
+              "description": "Fee to exit location, like an airport."
+             },
+             "extra_amount": {
+              "allOf": [
+               {
+                "description": "Represents an optional cost defined in a [`currency`](./currency.yaml).",
+                "examples": [
+                 500,
+                 520,
+                 1000
+                ],
+                "minimum": 0,
+                "title": "data-types/currency-cost",
+                "type": [
+                 "integer",
+                 "null"
+                ]
+               }
+              ],
+              "description": "Miscellaneous extra amounts charged to customer not covered by other fields."
+             },
+             "fare_type": {
+              "description": "Indicator of which rate was charged.",
+              "enum": [
+               "meter_fare",
+               "upfront_pricing",
+               "flat_rate"
+              ],
+              "type": "string"
+             },
+             "other_fees": {
+              "allOf": [
+               {
+                "description": "Represents an optional cost defined in a [`currency`](./currency.yaml).",
+                "examples": [
+                 500,
+                 520,
+                 1000
+                ],
+                "minimum": 0,
+                "title": "data-types/currency-cost",
+                "type": [
+                 "integer",
+                 "null"
+                ]
+               }
+              ],
+              "description": "Amount of any fees charged to the customer. Includes baggage fees, cleaning fee. Excludes other fees returned."
+             },
+             "payment_type": {
+              "enum": [
+               "account_number",
+               "cash",
+               "credit_card",
+               "mobile_app",
+               "no_payment",
+               "phone",
+               "voucher",
+               "test"
+              ],
+              "type": "string"
+             },
+             "surcharge": {
+              "allOf": [
+               {
+                "description": "Represents an optional cost defined in a [`currency`](./currency.yaml).",
+                "examples": [
+                 500,
+                 520,
+                 1000
+                ],
+                "minimum": 0,
+                "title": "data-types/currency-cost",
+                "type": [
+                 "integer",
+                 "null"
+                ]
+               }
+              ],
+              "description": "Any surcharge pricing."
+             },
+             "taxes": {
+              "allOf": [
+               {
+                "description": "Represents an optional cost defined in a [`currency`](./currency.yaml).",
+                "examples": [
+                 500,
+                 520,
+                 1000
+                ],
+                "minimum": 0,
+                "title": "data-types/currency-cost",
+                "type": [
+                 "integer",
+                 "null"
+                ]
+               }
+              ],
+              "description": "Amount of taxes paid for the ride."
+             },
+             "tip": {
+              "allOf": [
+               {
+                "description": "Represents an optional cost defined in a [`currency`](./currency.yaml).",
+                "examples": [
+                 500,
+                 520,
+                 1000
+                ],
+                "minimum": 0,
+                "title": "data-types/currency-cost",
+                "type": [
+                 "integer",
+                 "null"
+                ]
+               }
+              ],
+              "description": "Amount of tip paid by customer."
+             },
+             "tolls": {
+              "allOf": [
+               {
+                "description": "Represents an optional cost defined in a [`currency`](./currency.yaml).",
+                "examples": [
+                 500,
+                 520,
+                 1000
+                ],
+                "minimum": 0,
+                "title": "data-types/currency-cost",
+                "type": [
+                 "integer",
+                 "null"
+                ]
+               }
+              ],
+              "description": "Sum of any and all tolls charged for the trip, such as bridge tolls."
+             }
+            },
+            "required": [
+             "payment_type",
+             "fare_type"
+            ]
+           },
+           "journey_attributes": {
+            "additionalProperties": false,
+            "properties": {
+             "reservation_id": {
+              "allOf": [
+               {
+                "description": "A UUID used to uniquely identity an object.",
+                "examples": [
+                 "3c9604d6-b5ee-11e8-96f8-529269fb1459"
+                ],
+                "format": "uuid",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+                "title": "data-types/uuid",
+                "type": "string"
+               }
+              ],
+              "description": "A unique identifier for an entire car share reservation, tied across multiple journeys and therefore trips."
+             }
+            },
+            "type": "object"
+           },
+           "journey_id": {
+            "allOf": [
+             {
+              "description": "A UUID used to uniquely identity an object.",
+              "examples": [
+               "3c9604d6-b5ee-11e8-96f8-529269fb1459"
+              ],
+              "format": "uuid",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "title": "data-types/uuid",
+              "type": "string"
+             }
+            ],
+            "description": "A unique journey ID for associating collections of trips. The journey_id field shall have a consistent value in\noverlapping trips for a single reservation period, e.g. trips taken by a customer between ignition states over the\nduration of their reservation. A reservation is the duration the customer has continuous exclusive access to the vehicle\nwhether parked or in motion. Journeys may be point-to-point or multi-segment."
+           },
+           "trip_attributes": {
+            "properties": {
+             "app_name": {
+              "allOf": [
+               {
+                "description": "A length-limited string type.",
+                "examples": [
+                 "ABC123"
+                ],
+                "maxLength": 255,
+                "pattern": "^(.*)$",
+                "title": "data-types/string",
+                "type": "string"
+               }
+              ],
+              "description": "Name of the app used to reserve the trip which could be provider's app or 3rd party app."
+             },
+             "driver_id": {
+              "allOf": [
+               {
+                "description": "A length-limited string type.",
+                "examples": [
+                 "ABC123"
+                ],
+                "maxLength": 255,
+                "pattern": "^(.*)$",
+                "title": "data-types/string",
+                "type": "string"
+               }
+              ],
+              "description": "Universal identifier of a specific driver, static across operators, like a driver's license number, for company employees in `reservation` or `empty` trip types, not `private` trips. Could also be used as a lookup in an agency's internal driver system."
+             },
+             "permit_license_number": {
+              "allOf": [
+               {
+                "description": "A length-limited string type.",
+                "examples": [
+                 "ABC123"
+                ],
+                "maxLength": 255,
+                "pattern": "^(.*)$",
+                "title": "data-types/string",
+                "type": "string"
+               }
+              ],
+              "description": "The permit license number of the organization that dispatched the vehicle."
+             },
+             "reservation_type": {
+              "enum": [
+               "phone_dispatch",
+               "phone",
+               "text",
+               "app"
+              ]
+             }
+            },
+            "required": [
+             "reservation_type",
+             "passenger_count",
+             "requested_time",
+             "quoted_trip_start_time"
+            ]
+           },
+           "trip_type": {
+            "enum": [
+             "private",
+             "reservation",
+             "empty"
+            ]
+           }
+          },
+          "required": [
+           "trip_type"
+          ],
+          "title": "modes/care-share/trip",
+          "type": "object"
+         },
+         {
+          "description": "Trip definition for the `delivery-robots` mode.",
+          "properties": {
+           "accessibility_attributes": {
+            "allOf": [
+             {
+              "additionalProperties": false,
+              "description": "Accessibility options definition for the `delivery-robots` mode.",
+              "properties": {
+               "audio_cue": {
+                "description": "Is the device equipped with audio cues upon delivery.",
+                "type": "boolean"
+               },
+               "remote_open": {
+                "description": "Can the device door be remotely opened to retrieve cargo upon delivery.",
+                "type": "boolean"
+               },
+               "visual_cue": {
+                "description": "Is the device equipped with visual cues upon delivery.",
+                "type": "boolean"
+               }
+              },
+              "title": "modes/delivery-robots/accessibility-attributes",
+              "type": "object"
+             }
+            ],
+            "description": "The accessibility options available on a given delivery robot device. Required if available."
+           },
+           "fare_attributes": {
+            "properties": {
+             "payment_type": {
+              "enum": [
+               "account_number",
+               "cash",
+               "credit_card",
+               "mobile_app",
+               "no_payment",
+               "phone",
+               "test",
+               "voucher"
+              ],
+              "type": "string"
+             },
+             "price": {
+              "description": "Represents an optional cost defined in a [`currency`](./currency.yaml).",
+              "examples": [
+               500,
+               520,
+               1000
+              ],
+              "minimum": 0,
+              "title": "data-types/currency-cost",
+              "type": [
+               "integer",
+               "null"
+              ]
+             }
+            }
+           },
+           "journey_id": {
+            "allOf": [
+             {
+              "description": "A UUID used to uniquely identity an object.",
+              "examples": [
+               "3c9604d6-b5ee-11e8-96f8-529269fb1459"
+              ],
+              "format": "uuid",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "title": "data-types/uuid",
+              "type": "string"
+             }
+            ],
+            "description": "The `journey_id` field shall have a consistent value in overlapping trips. Journeys may be point-to-point, multi-segment,\nor multi-segment overlapping."
+           },
+           "trip_attributes": {
+            "properties": {
+             "app_name": {
+              "allOf": [
+               {
+                "description": "A length-limited string type.",
+                "examples": [
+                 "ABC123"
+                ],
+                "maxLength": 255,
+                "pattern": "^(.*)$",
+                "title": "data-types/string",
+                "type": "string"
+               }
+              ],
+              "description": "Name of the app used to reserve the trip which could be provider's app or 3rd party app."
+             },
+             "driver_id": {
+              "allOf": [
+               {
+                "description": "A UUID used to uniquely identity an object.",
+                "examples": [
+                 "3c9604d6-b5ee-11e8-96f8-529269fb1459"
+                ],
+                "format": "uuid",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+                "title": "data-types/uuid",
+                "type": "string"
+               }
+              ],
+              "description": "Consistent unique identifier of the primary driver. Could be based on software version or an internal human driver id."
+             },
+             "driver_type": {
+              "enum": [
+               "human",
+               "semi_autonomous",
+               "autonomous"
+              ]
+             },
+             "has_payload": {
+              "description": "is there any payload for any delivery included in the device at trip start.",
+              "type": "boolean"
+             },
+             "requested_time": {
+              "allOf": [
+               {
+                "description": "Integer milliseconds since Unix epoch.",
+                "examples": [
+                 1514764800000,
+                 1681855703000
+                ],
+                "minimum": 1514764800000,
+                "multipleOf": 1,
+                "title": "data-types/timestamp",
+                "type": "number"
+               }
+              ],
+              "description": "When the customer requested the trip."
+             }
+            },
+            "required": [
+             "driver_type"
+            ]
+           },
+           "trip_type": {
+            "enum": [
+             "delivery",
+             "return",
+             "advertising",
+             "mapping",
+             "roaming"
+            ]
+           }
+          },
+          "required": [
+           "trip_type"
+          ],
+          "title": "modes/delivery-robots/trip",
+          "type": "object"
+         },
+         {
+          "description": "Trip definition for the `micromobility` mode.",
+          "properties": {
+           "accessibility_attributes": {
+            "allOf": [
+             {
+              "description": "Accessibility options definition for the `micromobility` mode.",
+              "items": {
+               "enum": [
+                "adaptive"
+               ],
+               "type": "string"
+              },
+              "title": "modes/micromobility/accessibility-attributes",
+              "type": "array",
+              "uniqueItems": true
+             }
+            ],
+            "description": "The accessibility options utilized for a given trip. Required if available."
+           },
+           "trip_type": {
+            "enum": [
+             "rider",
+             "rebalance",
+             "maintenance"
+            ]
+           }
+          },
+          "title": "modes/micromobility/trip",
+          "type": "object"
+         },
+         {
+          "description": "Trip definition for the `passenger-services` mode.",
+          "properties": {
+           "accessibility_attributes": {
+            "allOf": [
+             {
+              "description": "Accessibility options definition for the `passenger-services` mode.",
+              "items": {
+               "enum": [
+                "wheelchair_accessible"
+               ],
+               "type": "string"
+              },
+              "title": "modes/passenger-services/accessibility-attributes",
+              "type": "array",
+              "uniqueItems": true
+             }
+            ],
+            "description": "The accessibility options utilized for a given trip. Required if available."
+           },
+           "fare_attributes": {
+            "properties": {
+             "base_rate": {
+              "allOf": [
+               {
+                "description": "Represents an optional cost defined in a [`currency`](./currency.yaml).",
+                "examples": [
+                 500,
+                 520,
+                 1000
+                ],
+                "minimum": 0,
+                "title": "data-types/currency-cost",
+                "type": [
+                 "integer",
+                 "null"
+                ]
+               }
+              ],
+              "description": "Minimum fare to be charged as soon as the trip starts."
+             },
+             "commission": {
+              "allOf": [
+               {
+                "description": "Represents an optional cost defined in a [`currency`](./currency.yaml).",
+                "examples": [
+                 500,
+                 520,
+                 1000
+                ],
+                "minimum": 0,
+                "title": "data-types/currency-cost",
+                "type": [
+                 "integer",
+                 "null"
+                ]
+               }
+              ],
+              "description": "Any extra commission for the ride."
+             },
+             "driver_trip_pay": {
+              "allOf": [
+               {
+                "description": "Represents an optional cost defined in a [`currency`](./currency.yaml).",
+                "examples": [
+                 500,
+                 520,
+                 1000
+                ],
+                "minimum": 0,
+                "title": "data-types/currency-cost",
+                "type": [
+                 "integer",
+                 "null"
+                ]
+               }
+              ],
+              "description": "The payment the driver received for the trip."
+             },
+             "exit_fee": {
+              "allOf": [
+               {
+                "description": "Represents an optional cost defined in a [`currency`](./currency.yaml).",
+                "examples": [
+                 500,
+                 520,
+                 1000
+                ],
+                "minimum": 0,
+                "title": "data-types/currency-cost",
+                "type": [
+                 "integer",
+                 "null"
+                ]
+               }
+              ],
+              "description": "Fee to exit location, like an airport."
+             },
+             "extra_amount": {
+              "allOf": [
+               {
+                "description": "Represents an optional cost defined in a [`currency`](./currency.yaml).",
+                "examples": [
+                 500,
+                 520,
+                 1000
+                ],
+                "minimum": 0,
+                "title": "data-types/currency-cost",
+                "type": [
+                 "integer",
+                 "null"
+                ]
+               }
+              ],
+              "description": "Miscellaneous extra amounts charged to customer not covered by other fields."
+             },
+             "fare_type": {
+              "description": "Indicator of which rate was charged.",
+              "enum": [
+               "meter_fare",
+               "upfront_pricing",
+               "flat_rate"
+              ],
+              "type": "string"
+             },
+             "meter_fare_amount": {
+              "allOf": [
+               {
+                "description": "Represents an optional cost defined in a [`currency`](./currency.yaml).",
+                "examples": [
+                 500,
+                 520,
+                 1000
+                ],
+                "minimum": 0,
+                "title": "data-types/currency-cost",
+                "type": [
+                 "integer",
+                 "null"
+                ]
+               }
+              ],
+              "description": "If `upfront_pricing` is used as a `fare_type` include what the metered fare would have been if `meter_fare` would have been used. Allows cost comparison in evaluation of programs and pilots."
+             },
+             "other_fees": {
+              "allOf": [
+               {
+                "description": "Represents an optional cost defined in a [`currency`](./currency.yaml).",
+                "examples": [
+                 500,
+                 520,
+                 1000
+                ],
+                "minimum": 0,
+                "title": "data-types/currency-cost",
+                "type": [
+                 "integer",
+                 "null"
+                ]
+               }
+              ],
+              "description": "Amount of any fees charged to the customer. Includes baggage fees, cleaning fee. Excludes other fees returned."
+             },
+             "payment_type": {
+              "enum": [
+               "account_number",
+               "cash",
+               "credit_card",
+               "mobile_app",
+               "no_payment",
+               "paratransit",
+               "phone",
+               "test",
+               "voucher"
+              ],
+              "type": "string"
+             },
+             "rate_code_id": {
+              "enum": [
+               "meter_fare",
+               "shared",
+               "out_of_town",
+               "disabled",
+               "upfront_pricing",
+               "promo_rate"
+              ],
+              "type": "string"
+             },
+             "surcharge": {
+              "allOf": [
+               {
+                "description": "Represents an optional cost defined in a [`currency`](./currency.yaml).",
+                "examples": [
+                 500,
+                 520,
+                 1000
+                ],
+                "minimum": 0,
+                "title": "data-types/currency-cost",
+                "type": [
+                 "integer",
+                 "null"
+                ]
+               }
+              ],
+              "description": "Any surcharge pricing."
+             },
+             "taxes": {
+              "allOf": [
+               {
+                "description": "Represents an optional cost defined in a [`currency`](./currency.yaml).",
+                "examples": [
+                 500,
+                 520,
+                 1000
+                ],
+                "minimum": 0,
+                "title": "data-types/currency-cost",
+                "type": [
+                 "integer",
+                 "null"
+                ]
+               }
+              ],
+              "description": "Amount of taxes paid for the ride."
+             },
+             "tip": {
+              "allOf": [
+               {
+                "description": "Represents an optional cost defined in a [`currency`](./currency.yaml).",
+                "examples": [
+                 500,
+                 520,
+                 1000
+                ],
+                "minimum": 0,
+                "title": "data-types/currency-cost",
+                "type": [
+                 "integer",
+                 "null"
+                ]
+               }
+              ],
+              "description": "Amount of tip paid by customer."
+             },
+             "tolls": {
+              "allOf": [
+               {
+                "description": "Represents an optional cost defined in a [`currency`](./currency.yaml).",
+                "examples": [
+                 500,
+                 520,
+                 1000
+                ],
+                "minimum": 0,
+                "title": "data-types/currency-cost",
+                "type": [
+                 "integer",
+                 "null"
+                ]
+               }
+              ],
+              "description": "Sum of any and all tolls charged for the trip, such as bridge tolls."
+             }
+            },
+            "required": [
+             "payment_type",
+             "fare_type"
+            ]
+           },
+           "journey_attributes": {
+            "additionalProperties": false,
+            "properties": {
+             "shift_id": {
+              "allOf": [
+               {
+                "description": "A UUID used to uniquely identity an object.",
+                "examples": [
+                 "3c9604d6-b5ee-11e8-96f8-529269fb1459"
+                ],
+                "format": "uuid",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+                "title": "data-types/uuid",
+                "type": "string"
+               }
+              ],
+              "description": "A unique identifier for an entire driver's work shift, tied across multiple journeys and therefore trips."
+             }
+            },
+            "type": "object"
+           },
+           "journey_id": {
+            "allOf": [
+             {
+              "description": "A UUID used to uniquely identity an object.",
+              "examples": [
+               "3c9604d6-b5ee-11e8-96f8-529269fb1459"
+              ],
+              "format": "uuid",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "title": "data-types/uuid",
+              "type": "string"
+             }
+            ],
+            "description": "A unique journey ID for associating collections of trips. The `journey_id` field shall have a consistent value in\noverlapping trips, e.g. \"pooled\" or \"shared\" rides with different start and/or end locations. Journeys may be\npoint-to-point, multi-segment, or multi-segment overlapping."
+           },
+           "trip_attributes": {
+            "properties": {
+             "app_name": {
+              "allOf": [
+               {
+                "description": "A length-limited string type.",
+                "examples": [
+                 "ABC123"
+                ],
+                "maxLength": 255,
+                "pattern": "^(.*)$",
+                "title": "data-types/string",
+                "type": "string"
+               }
+              ],
+              "description": "Name of the app used to reserve the trip which could be provider's app or 3rd party app."
+             },
+             "cancellation_reason": {
+              "allOf": [
+               {
+                "description": "A length-limited string type.",
+                "examples": [
+                 "ABC123"
+                ],
+                "maxLength": 255,
+                "pattern": "^(.*)$",
+                "title": "data-types/string",
+                "type": "string"
+               }
+              ],
+              "description": "The reason why a _driver_ cancelled a reservation. (required if a driver cancelled a trip, and a `driver_cancellation` event_type was part of the trip)"
+             },
+             "dispatch_time": {
+              "allOf": [
+               {
+                "description": "Integer milliseconds since Unix epoch.",
+                "examples": [
+                 1514764800000,
+                 1681855703000
+                ],
+                "minimum": 1514764800000,
+                "multipleOf": 1,
+                "title": "data-types/timestamp",
+                "type": "number"
+               }
+              ],
+              "description": "Time the vehicle was dispatched to the customer (required if trip was dispatched)."
+             },
+             "driver_id": {
+              "allOf": [
+               {
+                "description": "A length-limited string type.",
+                "examples": [
+                 "ABC123"
+                ],
+                "maxLength": 255,
+                "pattern": "^(.*)$",
+                "title": "data-types/string",
+                "type": "string"
+               }
+              ],
+              "description": "Universal identifier of a specific driver, static across operators, like a driver's license number. Could also be used as a lookup in an agency's internal driver system."
+             },
+             "dropoff_address": {
+              "allOf": [
+               {
+                "description": "A length-limited string type.",
+                "examples": [
+                 "ABC123"
+                ],
+                "maxLength": 255,
+                "pattern": "^(.*)$",
+                "title": "data-types/string",
+                "type": "string"
+               }
+              ],
+              "description": "Street address where the trip ended."
+             },
+             "hail_type": {
+              "enum": [
+               "street_hail",
+               "phone_dispatch",
+               "phone",
+               "text",
+               "app"
+              ]
+             },
+             "passenger_count": {
+              "allOf": [
+               {
+                "description": "An integer greater than or equal to 0.",
+                "minimum": 0,
+                "title": "data-types/integer-positive",
+                "type": "integer"
+               }
+              ],
+              "description": "Unique count of passengers transported during trip duration."
+             },
+             "permit_license_number": {
+              "allOf": [
+               {
+                "description": "A length-limited string type.",
+                "examples": [
+                 "ABC123"
+                ],
+                "maxLength": 255,
+                "pattern": "^(.*)$",
+                "title": "data-types/string",
+                "type": "string"
+               }
+              ],
+              "description": "The permit license number of the organization that dispatched the vehicle."
+             },
+             "pickup_address": {
+              "allOf": [
+               {
+                "description": "A length-limited string type.",
+                "examples": [
+                 "ABC123"
+                ],
+                "maxLength": 255,
+                "pattern": "^(.*)$",
+                "title": "data-types/string",
+                "type": "string"
+               }
+              ],
+              "description": "Street address where the trip originated from."
+             },
+             "quoted_trip_start_time": {
+              "allOf": [
+               {
+                "description": "Integer milliseconds since Unix epoch.",
+                "examples": [
+                 1514764800000,
+                 1681855703000
+                ],
+                "minimum": 1514764800000,
+                "multipleOf": 1,
+                "title": "data-types/timestamp",
+                "type": "number"
+               }
+              ],
+              "description": "Time the trip was estimated or scheduled to start, that was provided to the passenger."
+             },
+             "requested_time": {
+              "allOf": [
+               {
+                "description": "Integer milliseconds since Unix epoch.",
+                "examples": [
+                 1514764800000,
+                 1681855703000
+                ],
+                "minimum": 1514764800000,
+                "multipleOf": 1,
+                "title": "data-types/timestamp",
+                "type": "number"
+               }
+              ],
+              "description": "When the customer requested the trip."
+             },
+             "requested_trip_start_location": {
+              "allOf": [
+               {
+                "properties": {
+                 "altitude": {
+                  "description": "Altitude above mean sea level in meters.",
+                  "type": "number"
+                 },
+                 "heading": {
+                  "description": "Degrees - clockwise starting at 0 degrees at true North.",
+                  "type": "number"
+                 },
+                 "horizontal_accuracy": {
+                  "description": "Horizontal accuracy in meters.",
+                  "type": "number"
+                 },
+                 "lat": {
+                  "description": "Latitude coordinate.",
+                  "maximum": 90,
+                  "minimum": -90,
+                  "type": "number"
+                 },
+                 "lng": {
+                  "description": "Longitude coordinate.",
+                  "maximum": 180,
+                  "minimum": -180,
+                  "type": "number"
+                 },
+                 "satellites": {
+                  "allOf": [
+                   {
+                    "description": "An integer greater than or equal to 0.",
+                    "minimum": 0,
+                    "title": "data-types/integer-positive",
+                    "type": "integer"
+                   }
+                  ],
+                  "description": "Number of GPS or GNSS satellites."
+                 },
+                 "speed": {
+                  "description": "Estimated speed in meters / sec as reported by the GPS chipset.",
+                  "type": "number"
+                 },
+                 "vertical_accuracy": {
+                  "description": "Vertical accuracy in meters.",
+                  "type": "number"
+                 }
+                },
+                "required": [
+                 "lat",
+                 "lng"
+                ],
+                "title": "data-types/gps",
+                "type": "object"
+               }
+              ],
+              "description": "Location where the customer requested the trip to start (required if this is within jurisdictional boundaries)."
+             },
+             "trip_fare_time": {
+              "allOf": [
+               {
+                "description": "An integer greater than or equal to 0.",
+                "minimum": 0,
+                "title": "data-types/integer-positive",
+                "type": "integer"
+               }
+              ],
+              "description": "(milliseconds) part of the passenger trip where the vehicle was moving more quickly (e.g. >12mph), which is a different fare rate in some jurisdictions."
+             },
+             "trip_wait_time": {
+              "allOf": [
+               {
+                "description": "An integer greater than or equal to 0.",
+                "minimum": 0,
+                "title": "data-types/integer-positive",
+                "type": "integer"
+               }
+              ],
+              "description": "(milliseconds) Part of the passenger trip where the vehicle was moving slow or stopped (e.g. <12mph), which is a different fare rate in some jurisdictions."
+             },
+             "wheelchair_transported": {
+              "description": "is there any payload for any delivery included in the device at trip start.",
+              "type": "boolean"
+             }
+            },
+            "required": [
+             "hail_type",
+             "passenger_count",
+             "requested_time",
+             "quoted_trip_start_time"
+            ]
+           },
+           "trip_type": {
+            "enum": [
+             "private",
+             "shared",
+             "reservation",
+             "empty"
+            ]
+           }
+          },
+          "required": [
+           "trip_type"
+          ],
+          "title": "modes/passenger-services/trip",
+          "type": "object"
+         }
+        ]
+       }
+      ],
+      "description": "A trip represents a journey taken by a _mobility as a service_ customer with a geo-tagged start and stop point.",
+      "required": [
+       "provider_id",
+       "device_id",
+       "trip_id",
+       "start_time",
+       "end_time",
+       "start_location",
+       "end_location",
+       "duration",
+       "distance"
+      ],
+      "title": "models/trip",
+      "type": "object"
+     },
+     "type": "array"
+    }
+   },
+   "required": [
+    "trips"
+   ],
+   "type": "object"
+  }
+ ],
+ "title": "MDS 2.0 provider /trips",
+ "type": "object"
+}
