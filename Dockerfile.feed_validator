@@ -1,0 +1,28 @@
+############################
+# STEP 1 build executable binary
+############################
+FROM golang:1.25-alpine AS builder
+
+# Install git.
+# Git is required for fetching the dependencies.
+RUN apk update && apk add --no-cache git
+WORKDIR $GOPATH/src/deelfietsdashboard-importer
+COPY . .
+
+# Fetch dependencies.
+# Using go get.
+RUN go get -d -v
+# Build the binary.
+RUN CGO_ENABLED=0 go build -o /go/bin/feed-validator ./cmd/feed_validator
+
+############################
+# STEP 2 build a small image
+############################
+FROM alpine
+# CA certificates for HTTPS requests to operator feeds.
+RUN apk add --no-cache ca-certificates
+# Copy our static executable.
+COPY --from=builder /go/bin/feed-validator /go/bin/feed-validator
+
+EXPOSE 8080
+CMD ["/go/bin/feed-validator"]

@@ -1,0 +1,918 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "allOf": [
+  {
+   "description": "Response bodies must be a UTF-8 encoded JSON object and must minimally include the MDS `version`.",
+   "properties": {
+    "version": {
+     "description": "The version of MDS this data represents.",
+     "examples": [
+      "2.0.0"
+     ],
+     "pattern": "^2\\.(\\d|[1-9]\\d+)\\.(\\d|[1-9]\\d+)$",
+     "title": "data-type/version",
+     "type": "string"
+    }
+   },
+   "required": [
+    "version"
+   ],
+   "title": "response/version",
+   "type": "object"
+  },
+  {
+   "properties": {
+    "links": {
+     "additionalProperties": false,
+     "description": "If pagination is used for endpoints that support it, the pagination must comply with the [JSON API](http://jsonapi.org/format/#fetching-pagination) specification.",
+     "properties": {
+      "first": {
+       "examples": [
+        "https://data.provider.co/trips/first"
+       ],
+       "format": "uri",
+       "title": "The URL to the first page of data.",
+       "type": [
+        "null",
+        "string"
+       ]
+      },
+      "last": {
+       "examples": [
+        "https://data.provider.co/trips/last"
+       ],
+       "format": "uri",
+       "title": "The URL to the last page of data.",
+       "type": [
+        "null",
+        "string"
+       ]
+      },
+      "next": {
+       "examples": [
+        "https://data.provider.co/trips/next"
+       ],
+       "format": "uri",
+       "title": "The URL to the next page of data.",
+       "type": [
+        "null",
+        "string"
+       ]
+      },
+      "prev": {
+       "examples": [
+        "https://data.provider.co/trips/prev"
+       ],
+       "format": "uri",
+       "title": "The URL to the previous page of data.",
+       "type": [
+        "null",
+        "string"
+       ]
+      }
+     },
+     "required": [
+      "next"
+     ],
+     "type": "object"
+    }
+   },
+   "title": "response/paging",
+   "type": "object"
+  },
+  {
+   "properties": {
+    "last_updated": {
+     "allOf": [
+      {
+       "description": "Integer milliseconds since Unix epoch.",
+       "examples": [
+        1514764800000,
+        1681855703000
+       ],
+       "minimum": 1514764800000,
+       "multipleOf": 1,
+       "title": "data-types/timestamp",
+       "type": "number"
+      }
+     ],
+     "description": "Timestamp indicating the last time the data in this feed was updated."
+    }
+   },
+   "required": [
+    "last_updated"
+   ],
+   "title": "response/last_updated",
+   "type": "object"
+  },
+  {
+   "properties": {
+    "ttl": {
+     "allOf": [
+      {
+       "description": "An integer greater than or equal to 0.",
+       "minimum": 0,
+       "title": "data-types/integer-positive",
+       "type": "integer"
+      }
+     ],
+     "description": "Integer representing the number of milliseconds before the data in this feed will be updated again\n(0 if the data should always be refreshed). The data returned by a near-realtime endpoint should be as close to realtime\nas possible, but in no case should it be more than 5 minutes out-of-date.",
+     "maximum": 300000
+    }
+   },
+   "required": [
+    "ttl"
+   ],
+   "title": "response/ttl",
+   "type": "object"
+  },
+  {
+   "description": "Vehicles data payload",
+   "properties": {
+    "vehicles": {
+     "items": {
+      "allOf": [
+       {
+        "properties": {
+         "accessibility_attributes": {
+          "type": [
+           "array",
+           "object"
+          ]
+         },
+         "battery_capacity": {
+          "allOf": [
+           {
+            "description": "An integer greater than or equal to 0.",
+            "minimum": 0,
+            "title": "data-types/integer-positive",
+            "type": "integer"
+           }
+          ],
+          "description": "Capacity of battery expressed as milliamp hours (mAh)."
+         },
+         "data_provider_id": {
+          "allOf": [
+           {
+            "description": "A UUID used to uniquely identity an object.",
+            "examples": [
+             "3c9604d6-b5ee-11e8-96f8-529269fb1459"
+            ],
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "title": "data-types/uuid",
+            "type": "string"
+           }
+          ],
+          "description": "If different than `provider_id`, a UUID for the data solution provider managing the data feed in this endpoint."
+         },
+         "device_id": {
+          "allOf": [
+           {
+            "description": "A UUID used to uniquely identity an object.",
+            "examples": [
+             "3c9604d6-b5ee-11e8-96f8-529269fb1459"
+            ],
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "title": "data-types/uuid",
+            "type": "string"
+           }
+          ],
+          "description": "A unique device ID in UUID format."
+         },
+         "fuel_capacity": {
+          "allOf": [
+           {
+            "description": "An integer greater than or equal to 0.",
+            "minimum": 0,
+            "title": "data-types/integer-positive",
+            "type": "integer"
+           }
+          ],
+          "description": "Capacity of fuel tank (liquid, solid, gaseous) expressed in liters."
+         },
+         "maximum_speed": {
+          "allOf": [
+           {
+            "description": "An integer greater than or equal to 0.",
+            "minimum": 0,
+            "title": "data-types/integer-positive",
+            "type": "integer"
+           }
+          ],
+          "description": "Maximum speed (kph) possible with vehicle under normal, flat incline, smooth surface conditions. Applicable if the device has a built-in or intelligent speed limiter/governor."
+         },
+         "propulsion_types": {
+          "allOf": [
+           {
+            "description": "Array of propulsion types, allowing multiple values.",
+            "items": {
+             "description": "The allowed types of propulsion in MDS. Based off of `propulsion_type` in [GBFS vehicle_types](https://github.com/MobilityData/gbfs/blob/master/gbfs.md#vehicle_typesjson)",
+             "enum": [
+              "human",
+              "electric_assist",
+              "electric",
+              "combustion",
+              "combustion_diesel",
+              "hybrid",
+              "hydrogen_fuel_cell",
+              "plug_in_hybrid"
+             ],
+             "title": "data-types/propulsion-type",
+             "type": "string"
+            },
+            "title": "data-types/propulsion-type-array",
+            "type": "array",
+            "uniqueItems": true
+           }
+          ],
+          "description": "The type of propulsion; allows multiple values.",
+          "minItems": 1
+         },
+         "provider_id": {
+          "allOf": [
+           {
+            "description": "A UUID used to uniquely identity an object.",
+            "examples": [
+             "3c9604d6-b5ee-11e8-96f8-529269fb1459"
+            ],
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "title": "data-types/uuid",
+            "type": "string"
+           }
+          ],
+          "description": "A UUID for the Provider, unique within MDS. See MDS [provider list](https://github.com/openmobilityfoundation/mobility-data-specification/blob/main/providers.csv)."
+         },
+         "vehicle_attributes": {
+          "type": "object"
+         },
+         "vehicle_id": {
+          "allOf": [
+           {
+            "description": "A length-limited string type.",
+            "examples": [
+             "ABC123"
+            ],
+            "maxLength": 255,
+            "pattern": "^(.*)$",
+            "title": "data-types/string",
+            "type": "string"
+           }
+          ],
+          "description": "A unique vehicle identifier (visible code, license plate, etc), visible on the vehicle itself."
+         },
+         "vehicle_type": {
+          "allOf": [
+           {
+            "description": "The allowed types of of vehicles in MDS. Based off of `form_factor` in [GBFS vehicle_types](https://github.com/MobilityData/gbfs/blob/master/gbfs.md#vehicle_typesjson), with some additional to support MDS modes.",
+            "enum": [
+             "bicycle",
+             "bus",
+             "cargo_bicycle",
+             "car",
+             "delivery_robot",
+             "moped",
+             "motorcycle",
+             "scooter_standing",
+             "scooter_seated",
+             "truck",
+             "other"
+            ],
+            "title": "data-types/vehicle-type",
+            "type": "string"
+           }
+          ],
+          "description": "The type of vehicle."
+         }
+        }
+       },
+       {
+        "anyOf": [
+         {
+          "description": "Vehicle definition for the `car-share` mode.",
+          "properties": {
+           "accessibility_attributes": {
+            "allOf": [
+             {
+              "description": "Accessibility options definition for the `car-share` mode.",
+              "items": {
+               "enum": [
+                "wheelchair_accessible"
+               ],
+               "type": "string"
+              },
+              "title": "modes/car-share/accessibility-attributes",
+              "type": "array",
+              "uniqueItems": true
+             }
+            ],
+            "description": "The accessibility options available on a given vehicle. Required if available."
+           },
+           "vehicle_attributes": {
+            "additionalProperties": false,
+            "description": "Many of these attributes come from fields in [GBFS vehicle_types](https://github.com/MobilityData/gbfs/blob/v2.3/gbfs.md#vehicle_typesjson).",
+            "properties": {
+             "air_conditioning": {
+              "description": "Vehicle has air conditioning.",
+              "type": "boolean"
+             },
+             "bike_rack": {
+              "description": "Vehicle has car roof or trunk mounted bike rack.",
+              "type": "boolean"
+             },
+             "cargo_load_capacity": {
+              "allOf": [
+               {
+                "description": "An integer greater than or equal to 0.",
+                "minimum": 0,
+                "title": "data-types/integer-positive",
+                "type": "integer"
+               }
+              ],
+              "description": "The capacity of the vehicle cargo space (excluding passengers), expressed in kilograms."
+             },
+             "cargo_volume_capacity": {
+              "allOf": [
+               {
+                "description": "An integer greater than or equal to 0.",
+                "minimum": 0,
+                "title": "data-types/integer-positive",
+                "type": "integer"
+               }
+              ],
+              "description": "Cargo volume available in the vehicle, expressed in liters. For cars, it corresponds to the space between the boot floor, including the storage under the hatch, to the rear shelf in the trunk."
+             },
+             "color": {
+              "description": "A length-limited string type.",
+              "examples": [
+               "ABC123"
+              ],
+              "maxLength": 255,
+              "pattern": "^(.*)$",
+              "title": "data-types/string",
+              "type": "string"
+             },
+             "convertible": {
+              "description": "Vehicle has a retractable roof.",
+              "type": "boolean"
+             },
+             "cruise_control": {
+              "description": "Vehicle has a cruise control system.",
+              "type": "boolean"
+             },
+             "door_count": {
+              "allOf": [
+               {
+                "description": "An integer greater than or equal to 0.",
+                "minimum": 0,
+                "title": "data-types/integer-positive",
+                "type": "integer"
+               }
+              ],
+              "description": "The number of doors this vehicle type has."
+             },
+             "gear_switch": {
+              "enum": [
+               "automatic",
+               "manual"
+              ],
+              "type": "string"
+             },
+             "inspection_date": {
+              "allOf": [
+               {
+                "description": "Date expressed as ISO 8601 `YYYY-MM-DD`; valid for dates in 1970 and later.",
+                "examples": [
+                 "2023-12-31",
+                 "2024-01-01"
+                ],
+                "pattern": "(19[789]\\d|[2-9]\\d{3})-(0[1-9]|1[02])-([12]\\d|0[1-9]|3[01])",
+                "title": "data-types/iso-date",
+                "type": "string"
+               }
+              ],
+              "description": "The date of the last inspection of the vehicle in ISO 8601 `YYYY-MM-DD`."
+             },
+             "license_plate": {
+              "allOf": [
+               {
+                "description": "A length-limited string type.",
+                "examples": [
+                 "ABC123"
+                ],
+                "maxLength": 255,
+                "pattern": "^(.*)$",
+                "title": "data-types/string",
+                "type": "string"
+               }
+              ],
+              "description": "The registered vehicle license/number/registration plate identifier on the vehicle."
+             },
+             "make": {
+              "description": "A length-limited string type.",
+              "examples": [
+               "ABC123"
+              ],
+              "maxLength": 255,
+              "pattern": "^(.*)$",
+              "title": "data-types/string",
+              "type": "string"
+             },
+             "model": {
+              "description": "A length-limited string type.",
+              "examples": [
+               "ABC123"
+              ],
+              "maxLength": 255,
+              "pattern": "^(.*)$",
+              "title": "data-types/string",
+              "type": "string"
+             },
+             "navigation": {
+              "description": "Vehicle has a built-in navigation system.",
+              "type": "boolean"
+             },
+             "park_access": {
+              "description": "Vehicle has an access pass to a national/regional/municipal park system.",
+              "type": "boolean"
+             },
+             "phone_charger": {
+              "description": "Vehicle has a place to charge a cellphone.",
+              "type": "boolean"
+             },
+             "placard_number": {
+              "allOf": [
+               {
+                "description": "A length-limited string type.",
+                "examples": [
+                 "ABC123"
+                ],
+                "maxLength": 255,
+                "pattern": "^(.*)$",
+                "title": "data-types/string",
+                "type": "string"
+               }
+              ],
+              "description": "The registered placard number of the vehicle."
+             },
+             "snow_brush": {
+              "description": "Vehicle has brushes for removing snow or ice from vehicle.",
+              "type": "boolean"
+             },
+             "snow_shovel": {
+              "description": "Vehicle has a shovel for removing snow or ice from around vehicle or vehicle path.",
+              "type": "boolean"
+             },
+             "sunshade": {
+              "description": "Vehicle has a sunshade available (i.e. for windshield).",
+              "type": "boolean"
+             },
+             "toll_transponder": {
+              "description": "Vehicle has a toll transponder for national/regional toll system.",
+              "type": "boolean"
+             },
+             "vin": {
+              "allOf": [
+               {
+                "description": "A length-limited string type.",
+                "examples": [
+                 "ABC123"
+                ],
+                "maxLength": 255,
+                "pattern": "^(.*)$",
+                "title": "data-types/string",
+                "type": "string"
+               }
+              ],
+              "description": "The vehicle's Vehicle Identification Number."
+             },
+             "wheel_count": {
+              "allOf": [
+               {
+                "description": "An integer greater than or equal to 0.",
+                "minimum": 0,
+                "title": "data-types/integer-positive",
+                "type": "integer"
+               }
+              ],
+              "description": "The number of doors this vehicle type has."
+             },
+             "year": {
+              "description": "Represents a minimum for fields that capture a year as an integer. Derived from Unix timestamp 0.",
+              "minimum": 1970,
+              "title": "data-types/minimum-year",
+              "type": "integer"
+             }
+            },
+            "required": [
+             "year",
+             "make",
+             "model",
+             "color",
+             "vin",
+             "license_plate"
+            ],
+            "type": "object"
+           }
+          },
+          "title": "modes/car-share/vehicle",
+          "type": "object"
+         },
+         {
+          "description": "Vehicle definition for the `delivery-robots` mode.",
+          "properties": {
+           "accessibility_attributes": {
+            "allOf": [
+             {
+              "additionalProperties": false,
+              "description": "Accessibility options definition for the `delivery-robots` mode.",
+              "properties": {
+               "audio_cue": {
+                "description": "Is the device equipped with audio cues upon delivery.",
+                "type": "boolean"
+               },
+               "remote_open": {
+                "description": "Can the device door be remotely opened to retrieve cargo upon delivery.",
+                "type": "boolean"
+               },
+               "visual_cue": {
+                "description": "Is the device equipped with visual cues upon delivery.",
+                "type": "boolean"
+               }
+              },
+              "title": "modes/delivery-robots/accessibility-attributes",
+              "type": "object"
+             }
+            ],
+            "description": "The accessibility options available on a given delivery robot device. Required if available."
+           },
+           "vehicle_attributes": {
+            "additionalProperties": false,
+            "properties": {
+             "color": {
+              "description": "A length-limited string type.",
+              "examples": [
+               "ABC123"
+              ],
+              "maxLength": 255,
+              "pattern": "^(.*)$",
+              "title": "data-types/string",
+              "type": "string"
+             },
+             "equipped_cameras": {
+              "allOf": [
+               {
+                "description": "An integer greater than or equal to 0.",
+                "minimum": 0,
+                "title": "data-types/integer-positive",
+                "type": "integer"
+               }
+              ],
+              "description": "The number of cameras equipped on device."
+             },
+             "equipped_lighting": {
+              "allOf": [
+               {
+                "description": "An integer greater than or equal to 0.",
+                "minimum": 0,
+                "title": "data-types/integer-positive",
+                "type": "integer"
+               }
+              ],
+              "description": "The  number of lights used to illuminate the environment on the the device."
+             },
+             "height": {
+              "allOf": [
+               {
+                "description": "An integer greater than or equal to 0.",
+                "minimum": 0,
+                "title": "data-types/integer-positive",
+                "type": "integer"
+               }
+              ],
+              "description": "The height in meters of the device (minus flexible elements like flags)."
+             },
+             "inspection_date": {
+              "allOf": [
+               {
+                "description": "Date expressed as ISO 8601 `YYYY-MM-DD`; valid for dates in 1970 and later.",
+                "examples": [
+                 "2023-12-31",
+                 "2024-01-01"
+                ],
+                "pattern": "(19[789]\\d|[2-9]\\d{3})-(0[1-9]|1[02])-([12]\\d|0[1-9]|3[01])",
+                "title": "data-types/iso-date",
+                "type": "string"
+               }
+              ],
+              "description": "The date of the last inspection of the vehicle in ISO 8601 `YYYY-MM-DD`."
+             },
+             "length": {
+              "allOf": [
+               {
+                "description": "An integer greater than or equal to 0.",
+                "minimum": 0,
+                "title": "data-types/integer-positive",
+                "type": "integer"
+               }
+              ],
+              "description": "The length in meters of the device."
+             },
+             "make": {
+              "description": "A length-limited string type.",
+              "examples": [
+               "ABC123"
+              ],
+              "maxLength": 255,
+              "pattern": "^(.*)$",
+              "title": "data-types/string",
+              "type": "string"
+             },
+             "model": {
+              "description": "A length-limited string type.",
+              "examples": [
+               "ABC123"
+              ],
+              "maxLength": 255,
+              "pattern": "^(.*)$",
+              "title": "data-types/string",
+              "type": "string"
+             },
+             "storage_capacity": {
+              "allOf": [
+               {
+                "description": "An integer greater than or equal to 0.",
+                "minimum": 0,
+                "title": "data-types/integer-positive",
+                "type": "integer"
+               }
+              ],
+              "description": "The volume in cubic centimeters of cargo space available not including any cargo."
+             },
+             "top_speed": {
+              "allOf": [
+               {
+                "description": "An integer greater than or equal to 0.",
+                "minimum": 0,
+                "title": "data-types/integer-positive",
+                "type": "integer"
+               }
+              ],
+              "description": "The theoretical top speed in meters per second of the device."
+             },
+             "weight": {
+              "allOf": [
+               {
+                "description": "An integer greater than or equal to 0.",
+                "minimum": 0,
+                "title": "data-types/integer-positive",
+                "type": "integer"
+               }
+              ],
+              "description": "The weight in kilograms rounded up of the device not including cargo."
+             },
+             "wheel_count": {
+              "allOf": [
+               {
+                "description": "An integer greater than or equal to 0.",
+                "minimum": 0,
+                "title": "data-types/integer-positive",
+                "type": "integer"
+               }
+              ],
+              "description": "The number of wheels on the device."
+             },
+             "width": {
+              "allOf": [
+               {
+                "description": "An integer greater than or equal to 0.",
+                "minimum": 0,
+                "title": "data-types/integer-positive",
+                "type": "integer"
+               }
+              ],
+              "description": "The width in meters of the device."
+             },
+             "year": {
+              "description": "Represents a minimum for fields that capture a year as an integer. Derived from Unix timestamp 0.",
+              "minimum": 1970,
+              "title": "data-types/minimum-year",
+              "type": "integer"
+             }
+            },
+            "type": "object"
+           }
+          },
+          "title": "modes/delivery-robots/vehicle",
+          "type": "object"
+         },
+         {
+          "description": "Vehicle definition for the `micromobility` mode.",
+          "properties": {
+           "accessibility_attributes": {
+            "allOf": [
+             {
+              "description": "Accessibility options definition for the `micromobility` mode.",
+              "items": {
+               "enum": [
+                "adaptive"
+               ],
+               "type": "string"
+              },
+              "title": "modes/micromobility/accessibility-attributes",
+              "type": "array",
+              "uniqueItems": true
+             }
+            ],
+            "description": "The accessibility options available on a given vehicle. Required if available."
+           },
+           "vehicle_attributes": {
+            "additionalProperties": false,
+            "properties": {
+             "make": {
+              "description": "A length-limited string type.",
+              "examples": [
+               "ABC123"
+              ],
+              "maxLength": 255,
+              "pattern": "^(.*)$",
+              "title": "data-types/string",
+              "type": "string"
+             },
+             "model": {
+              "description": "A length-limited string type.",
+              "examples": [
+               "ABC123"
+              ],
+              "maxLength": 255,
+              "pattern": "^(.*)$",
+              "title": "data-types/string",
+              "type": "string"
+             },
+             "year": {
+              "description": "Represents a minimum for fields that capture a year as an integer. Derived from Unix timestamp 0.",
+              "minimum": 1970,
+              "title": "data-types/minimum-year",
+              "type": "integer"
+             }
+            },
+            "type": "object"
+           }
+          },
+          "title": "modes/micromobility/vehicle",
+          "type": "object"
+         },
+         {
+          "description": "Vehicle definition for the `passenger-services` mode.",
+          "properties": {
+           "accessibility_attributes": {
+            "allOf": [
+             {
+              "description": "Accessibility options definition for the `passenger-services` mode.",
+              "items": {
+               "enum": [
+                "wheelchair_accessible"
+               ],
+               "type": "string"
+              },
+              "title": "modes/passenger-services/accessibility-attributes",
+              "type": "array",
+              "uniqueItems": true
+             }
+            ],
+            "description": "The accessibility options available on a given vehicle. Required if available."
+           },
+           "vehicle_attributes": {
+            "additionalProperties": false,
+            "properties": {
+             "color": {
+              "description": "A length-limited string type.",
+              "examples": [
+               "ABC123"
+              ],
+              "maxLength": 255,
+              "pattern": "^(.*)$",
+              "title": "data-types/string",
+              "type": "string"
+             },
+             "inspection_date": {
+              "allOf": [
+               {
+                "description": "Date expressed as ISO 8601 `YYYY-MM-DD`; valid for dates in 1970 and later.",
+                "examples": [
+                 "2023-12-31",
+                 "2024-01-01"
+                ],
+                "pattern": "(19[789]\\d|[2-9]\\d{3})-(0[1-9]|1[02])-([12]\\d|0[1-9]|3[01])",
+                "title": "data-types/iso-date",
+                "type": "string"
+               }
+              ],
+              "description": "The date of the last inspection of the vehicle in ISO 8601 `YYYY-MM-DD`."
+             },
+             "license_plate": {
+              "allOf": [
+               {
+                "description": "A length-limited string type.",
+                "examples": [
+                 "ABC123"
+                ],
+                "maxLength": 255,
+                "pattern": "^(.*)$",
+                "title": "data-types/string",
+                "type": "string"
+               }
+              ],
+              "description": "The registered vehicle license/number/registration plate identifier on the vehicle."
+             },
+             "make": {
+              "description": "A length-limited string type.",
+              "examples": [
+               "ABC123"
+              ],
+              "maxLength": 255,
+              "pattern": "^(.*)$",
+              "title": "data-types/string",
+              "type": "string"
+             },
+             "model": {
+              "description": "A length-limited string type.",
+              "examples": [
+               "ABC123"
+              ],
+              "maxLength": 255,
+              "pattern": "^(.*)$",
+              "title": "data-types/string",
+              "type": "string"
+             },
+             "placard_number": {
+              "allOf": [
+               {
+                "description": "A length-limited string type.",
+                "examples": [
+                 "ABC123"
+                ],
+                "maxLength": 255,
+                "pattern": "^(.*)$",
+                "title": "data-types/string",
+                "type": "string"
+               }
+              ],
+              "description": "The registered placard number of the vehicle."
+             },
+             "vin": {
+              "allOf": [
+               {
+                "description": "A length-limited string type.",
+                "examples": [
+                 "ABC123"
+                ],
+                "maxLength": 255,
+                "pattern": "^(.*)$",
+                "title": "data-types/string",
+                "type": "string"
+               }
+              ],
+              "description": "The vehicle's Vehicle Identification Number."
+             },
+             "year": {
+              "description": "Represents a minimum for fields that capture a year as an integer. Derived from Unix timestamp 0.",
+              "minimum": 1970,
+              "title": "data-types/minimum-year",
+              "type": "integer"
+             }
+            },
+            "type": "object"
+           }
+          },
+          "title": "modes/passenger-services/vehicle",
+          "type": "object"
+         }
+        ]
+       }
+      ],
+      "description": "Vehicle object in MDS.",
+      "required": [
+       "device_id",
+       "provider_id",
+       "vehicle_id",
+       "vehicle_type",
+       "propulsion_types"
+      ],
+      "title": "models/vehicle",
+      "type": "object"
+     },
+     "type": "array"
+    }
+   },
+   "required": [
+    "vehicles"
+   ],
+   "type": "object"
+  }
+ ],
+ "title": "MDS 2.0 provider /vehicles",
+ "type": "object"
+}

@@ -69,24 +69,29 @@ func (feed *Feed) DownloadDataTripsWithRetry(url string, seconds time.Duration) 
 }
 
 func (feed *Feed) doRequest(url string, seconds time.Duration) (*http.Response, int) {
-	client := &http.Client{
-		Timeout: seconds * time.Second,
-	}
-
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		log.Print(err)
-		return nil, -1
-	}
-	req = feed.addAuth(req)
-	req = feed.addAdditionalRequestHeaders(req)
-
-	res, err := client.Do(req)
+	res, err := feed.Fetch(url, seconds*time.Second)
 	if err != nil {
 		log.Print(err)
 		return nil, -1
 	}
 	return res, res.StatusCode
+}
+
+// Fetch performs a single authenticated GET request and never logs, because
+// feed URLs and request errors can contain credentials.
+func (feed *Feed) Fetch(url string, timeout time.Duration) (*http.Response, error) {
+	client := &http.Client{
+		Timeout: timeout,
+	}
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req = feed.addAuth(req)
+	req = feed.addAdditionalRequestHeaders(req)
+
+	return client.Do(req)
 }
 
 func (feed *Feed) addAuth(r *http.Request) *http.Request {

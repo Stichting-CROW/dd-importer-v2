@@ -74,3 +74,24 @@ kubectl logs -l app=feed-monitor -f
 ```bash
 kubectl delete deployment feed-monitor
 ```
+
+# Feed Validator
+
+Internal HTTP service (`cmd/feed_validator`) that checks a feed against MDS or GBFS for the
+feed management page. The admin API calls `POST /validate`; the `ClusterIP` service keeps it
+unreachable from outside the cluster. It needs no database access.
+
+```bash
+docker build -f Dockerfile.feed_validator -t registry.gitlab.com/bikedashboard/feed-validator:latest .
+docker push registry.gitlab.com/bikedashboard/feed-validator:latest
+
+kubectl create secret generic feed-validator-token --from-literal=token="$(openssl rand -hex 32)"
+kubectl apply -f k8s/feed-validator-deployment.yaml
+```
+
+Give the admin API the same token and the service URL:
+
+| Variable | Value |
+|----------|-------|
+| `FEED_VALIDATOR_URL` | `http://feed-validator` (same namespace) |
+| `FEED_VALIDATOR_TOKEN` | the `token` of secret `feed-validator-token` |

@@ -13,9 +13,11 @@ require (
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.9
 	github.com/marcboeker/go-duckdb/v2 v2.4.2
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 	github.com/spf13/cobra v1.10.2
 	github.com/twpayne/go-geom v1.6.1
 	github.com/vmihailenco/msgpack/v5 v5.4.1
+	golang.org/x/text v0.28.0
 )
 
 require (
@@ -48,7 +50,6 @@ require (
 	golang.org/x/mod v0.27.0 // indirect
 	golang.org/x/sync v0.16.0 // indirect
 	golang.org/x/sys v0.35.0 // indirect
-	golang.org/x/text v0.28.0 // indirect
 	golang.org/x/tools v0.36.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 )
