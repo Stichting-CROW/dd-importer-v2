@@ -192,6 +192,8 @@ CREATE TABLE feeds (
      is_active                          BOOLEAN DEFAULT TRUE,
      data_type                          feed_data_type NOT NULL DEFAULT 'vehicles',
      last_time_succesfully_imported     TIMESTAMPTZ,
+     last_time_import_attempted         TIMESTAMPTZ,
+     import_failing_since               TIMESTAMPTZ,
      ignore_disruptions_in_feed_until   TIMESTAMPTZ,
      remarks                            TEXT,
      PRIMARY KEY (feed_id)

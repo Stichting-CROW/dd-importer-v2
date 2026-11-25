@@ -196,28 +196,51 @@ func (t *TelegramNotifier) extractRetryAfter(body []byte) int {
 	return 0
 }
 
+// dataTypeLine names the data type in an alert about a feed that does not
+// deliver vehicles, so it is not mistaken for a vehicle feed.
+func dataTypeLine(dataType string) string {
+	if dataType == "" || dataType == dataTypeVehicles {
+		return ""
+	}
+	return fmt.Sprintf("<b>Data type:</b> %s\n", dataType)
+}
+
 // SendDowntimeAlert sends a formatted downtime alert
-func (t *TelegramNotifier) SendDowntimeAlert(systemID string, feedID int, duration string) error {
+func (t *TelegramNotifier) SendDowntimeAlert(systemID string, feedID int, dataType string, duration string) error {
 	message := fmt.Sprintf(
 		"⚠️ <b>Feed Down Alert</b>\n\n"+
 			"<b>System:</b> %s\n"+
 			"<b>Feed ID:</b> %d\n"+
+			"%s"+
 			"<b>Status:</b> DOWN\n"+
 			"<b>Duration:</b> %s",
-		systemID, feedID, duration,
+		systemID, feedID, dataTypeLine(dataType), duration,
 	)
 	return t.SendAlert(message)
 }
 
 // SendRecoveryAlert sends a formatted recovery alert
-func (t *TelegramNotifier) SendRecoveryAlert(systemID string, feedID int, downtime string) error {
+func (t *TelegramNotifier) SendRecoveryAlert(systemID string, feedID int, dataType string, downtime string) error {
 	message := fmt.Sprintf(
 		"✅ <b>Feed Recovered</b>\n\n"+
 			"<b>System:</b> %s\n"+
 			"<b>Feed ID:</b> %d\n"+
+			"%s"+
 			"<b>Status:</b> UP\n"+
 			"<b>Total Downtime:</b> %s",
-		systemID, feedID, downtime,
+		systemID, feedID, dataTypeLine(dataType), downtime,
+	)
+	return t.SendAlert(message)
+}
+
+// SendImporterStalledAlert sends an alert that a scheduled importer stopped running
+func (t *TelegramNotifier) SendImporterStalledAlert(dataType string, sinceLastAttempt string) error {
+	message := fmt.Sprintf(
+		"🛑 <b>Importer Not Running</b>\n\n"+
+			"<b>Data type:</b> %s\n"+
+			"<b>Last import attempt:</b> %s ago\n\n"+
+			"Feeds of this type are not marked as down until the importer runs again.",
+		dataType, sinceLastAttempt,
 	)
 	return t.SendAlert(message)
 }

@@ -31,6 +31,28 @@ A monitoring service that tracks feed uptime and sends Telegram notifications wh
    - Sends notification when feed is enabled (🆕)
    - Sends notification when feed is disabled (🚫)
 
+### Trips and service area feeds
+
+Feeds with `data_type = 'trips'` or `'service_areas'` are imported by an hourly job, so they follow different rules. The trip importer and the service area importer record every attempt on the feed row:
+
+| Column | Meaning |
+|--------|---------|
+| `last_time_import_attempted` | Last time the feed was requested, successful or not |
+| `last_time_succesfully_imported` | Last successful import |
+| `import_failing_since` | First failed attempt since the last success; `NULL` while the last attempt succeeded |
+
+A trips import succeeds when the requests succeed, also when they return no trips. A service area import succeeds when the feed downloads, parses and contains at least one zone.
+
+Every minute the monitor decides per feed:
+
+- **Down**: the feed was attempted in the last 2.5 hours, it is failing, and the last successful import is more than 2.5 hours ago (two hourly runs plus a margin, so one failed run opens no downtime). A `feed_downtime` record is created that starts at `import_failing_since`.
+- **Up**: the feed was attempted in the last 2.5 hours and that attempt succeeded. An open `feed_downtime` record is closed.
+- **No conclusion**: the feed was never attempted, or the last attempt is more than 2.5 hours old. `feed_downtime` is left as it is.
+
+When no active feed of a data type was attempted for 2.5 hours, the importer itself is not running. The monitor then sends one "Importer Not Running" alert (🛑) for that data type and does not mark its feeds as down.
+
+Downtime and recovery of these feeds are always recorded in `feed_downtime`. They are only sent to Telegram for the data types listed in `TELEGRAM_ALERT_DATA_TYPES`.
+
 ## Architecture
 
 ### Notification Queue System
@@ -76,6 +98,10 @@ TELEGRAM_CHAT_ID=your_chat_id_here
 
 # Optional: Rate limiting configuration (default: 1000ms = 1 second between messages)
 TELEGRAM_RATE_LIMIT_MS=1000
+
+# Optional: data types besides vehicles whose downtime and recovery are sent to
+# Telegram (default: none, they are only recorded in feed_downtime)
+TELEGRAM_ALERT_DATA_TYPES=trips,service_areas
 ```
 
 ### Setting up Telegram Bot
@@ -93,6 +119,13 @@ Run the migration to create the `feed_downtime` table:
 
 ```bash
 psql -d deelfietsdashboard -f sql/migrations/20260402_add_feed_downtime_table.sql
+```
+
+The monitor also reads `feeds.data_type` and the import attempt columns. Run these before starting it:
+
+```bash
+psql -d deelfietsdashboard -f sql/migrations/20261125_add_data_type_to_feeds.sql
+psql -d deelfietsdashboard -f sql/migrations/20261125_add_import_attempt_tracking_to_feeds.sql
 ```
 
 ### Local Development

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"deelfietsdashboard-importer/feed"
+	"deelfietsdashboard-importer/feed/feed_status"
 	"deelfietsdashboard-importer/feed/mds"
 	mdstwo "deelfietsdashboard-importer/feed/mds-v2"
 	"deelfietsdashboard-importer/process"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jmoiron/sqlx"
 )
 
 const (
@@ -61,7 +63,7 @@ func main() {
 	for _, dataFeed := range feeds {
 		log.Printf("Loaded trip feed: %s", feedLabel(dataFeed))
 	}
-	if err := downloadFeeds(feeds, pool); err != nil {
+	if err := downloadFeeds(feeds, pool, dataProcessor.DB); err != nil {
 		log.Printf("Some feeds failed to import, continuing: %s", err)
 	}
 }
@@ -93,7 +95,7 @@ func getLatestImportTime(feed feed.Feed, db *pgxpool.Pool) time.Time {
 	return latestImportTime.UTC()
 }
 
-func downloadFeeds(feeds []feed.Feed, pool *pgxpool.Pool) error {
+func downloadFeeds(feeds []feed.Feed, pool *pgxpool.Pool, statusDB *sqlx.DB) error {
 	// Feeds that share a system_id hit the same provider endpoint, so loading
 	// them at the same time can trigger rate limiting (429). Group them and load
 	// each group sequentially; different system_ids still run in parallel.
@@ -118,7 +120,7 @@ func downloadFeeds(feeds []feed.Feed, pool *pgxpool.Pool) error {
 				switch dataFeed.Type {
 				case "mds-trips-v1", "mds-trips-v2":
 					latestImport := getLatestImportTime(dataFeed, pool)
-					if err := loadDataUntilNow(&dataFeed, latestImport, pool); err != nil {
+					if err := loadDataUntilNow(&dataFeed, latestImport, pool, statusDB); err != nil {
 						errCh <- fmt.Errorf("%s: %w", feedLabel(dataFeed), err)
 					}
 				default:
@@ -138,7 +140,7 @@ func downloadFeeds(feeds []feed.Feed, pool *pgxpool.Pool) error {
 	return errors.Join(errs...)
 }
 
-func loadDataUntilNow(feed *feed.Feed, latestImport time.Time, pool *pgxpool.Pool) error {
+func loadDataUntilNow(feed *feed.Feed, latestImport time.Time, pool *pgxpool.Pool, statusDB *sqlx.DB) error {
 	// Trip data is only complete once a provider has finalized it, which takes
 	// up to an hour. So only request hour buckets that finished at least
 	// `importLag` ago: `[cursor, cutoff)` holds exactly those buckets. This also
@@ -160,11 +162,16 @@ func loadDataUntilNow(feed *feed.Feed, latestImport time.Time, pool *pgxpool.Poo
 		}
 		trips, err := getDataForTimestamps(feed, toRequest)
 		if err != nil {
+			feed_status.RecordImportFailure(feed.ID, statusDB)
 			return err
 		}
+		// A failure to store is a problem on our side, so it is not recorded
+		// as a failing feed.
 		if err := storeTrips(feed, trips, pool); err != nil {
 			return err
 		}
+		// Zero trips is a success too: a feed can be empty at quiet hours.
+		feed_status.RecordImportSuccess(feed.ID, statusDB)
 	}
 }
 
