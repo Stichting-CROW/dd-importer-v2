@@ -15,7 +15,7 @@ A monitoring service that tracks feed uptime and sends Telegram notifications wh
 
 ## How It Works
 
-1. Queries the `feeds` table every minute for all feeds with `import_vehicles = true`
+1. Queries the `feeds` table every minute for all feeds with `data_type = 'vehicles'`
 2. Checks `last_time_succesfully_imported` timestamp for each feed
 3. If more than 5 minutes have passed since last successful import:
    - Creates a record in `feed_downtime` table
@@ -211,7 +211,7 @@ SELECT
     SUM(EXTRACT(EPOCH FROM (COALESCE(d.downtime_end, NOW()) - d.downtime_start)))/3600 as total_hours_down
 FROM feeds f
 LEFT JOIN feed_downtime d ON f.feed_id = d.feed_id
-WHERE f.import_vehicles = true
+WHERE f.data_type = 'vehicles'
 GROUP BY f.system_id;
 ```
 

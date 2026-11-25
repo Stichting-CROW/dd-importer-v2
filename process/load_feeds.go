@@ -51,7 +51,7 @@ func queryNewFeeds(db *sqlx.DB) []feed.Feed {
 		FROM feeds
 		LEFT JOIN vehicle_type
 		ON default_vehicle_type = vehicle_type_id
-		WHERE feeds.import_vehicles = true
+		WHERE feeds.data_type = 'vehicles'
 		AND feeds.is_active = true
 		ORDER BY feed_id
 	`
@@ -72,7 +72,7 @@ func queryGeofencingFeeds(dataProcessor DataProcessor) []feed.Feed {
 		FROM feeds
 		LEFT JOIN vehicle_type
 		ON default_vehicle_type = vehicle_type_id
-		WHERE feeds.import_service_area = true
+		WHERE feeds.data_type = 'service_areas'
 		AND feeds.is_active = true
 		ORDER BY feed_id
 	`
@@ -91,7 +91,7 @@ func queryTripFeeds(dataProcessor DataProcessor) []feed.Feed {
 		FROM feeds
 		LEFT JOIN vehicle_type
 		ON default_vehicle_type = vehicle_type_id
-		WHERE feeds.feed_type IN ('mds-trips-v1', 'mds-trips-v2')
+		WHERE feeds.data_type = 'trips'
 		AND feeds.is_active = true
 		ORDER BY feed_id
 	`

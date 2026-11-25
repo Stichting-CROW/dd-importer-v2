@@ -20,11 +20,11 @@ COPY (
         f.request_headers,
         f.default_vehicle_type,
         TRUE  AS is_active,
-        FALSE AS import_vehicles,
-        FALSE AS import_service_area,
+        'trips' AS data_type,
         'Created from feed ' || f.feed_id || ' (' || f.feed_type || ') for MDS trips import' AS remarks
     FROM feeds f
     WHERE f.feed_type IN ('mds', 'mds-v2')
+      AND f.data_type = 'vehicles'
       AND f.is_active = TRUE
       AND f.feed_url LIKE '%/vehicles'
       AND NOT EXISTS (

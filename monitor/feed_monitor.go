@@ -10,12 +10,15 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+// dataTypeVehicles is the feeds.data_type value of feeds that deliver vehicles.
+const dataTypeVehicles = "vehicles"
+
 // FeedStatus represents the current status of a feed in the database
 type FeedStatus struct {
 	FeedID                      int          `db:"feed_id"`
 	SystemID                    string       `db:"system_id"`
 	IsActive                    bool         `db:"is_active"`
-	ImportVehicles              bool         `db:"import_vehicles"`
+	DataType                    string       `db:"data_type"`
 	LastTimeSuccesfullyImported sql.NullTime `db:"last_time_succesfully_imported"`
 }
 
@@ -166,8 +169,7 @@ func (fm *FeedMonitor) checkFeeds() {
 			}
 		}
 
-		// Only check downtime for feeds that should import vehicles
-		if feed.ImportVehicles && feed.IsActive {
+		if shouldCheckDowntime(feed) {
 			fm.checkDowntime(feed, currentTime)
 		}
 
@@ -176,13 +178,20 @@ func (fm *FeedMonitor) checkFeeds() {
 	}
 }
 
+// shouldCheckDowntime reports whether downtime is tracked for a feed. Only the
+// vehicle importer records last_time_succesfully_imported, so trips and
+// service area feeds would always look down.
+func shouldCheckDowntime(feed FeedStatus) bool {
+	return feed.DataType == dataTypeVehicles && feed.IsActive
+}
+
 // getActiveFeeds retrieves all feeds from the database
 func (fm *FeedMonitor) getActiveFeeds() ([]FeedStatus, error) {
 	stmt := `SELECT 
 		feed_id, 
 		system_id, 
 		is_active, 
-		import_vehicles,
+		data_type,
 		last_time_succesfully_imported
 		FROM feeds
 		ORDER BY feed_id`
